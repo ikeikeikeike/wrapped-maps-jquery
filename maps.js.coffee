@@ -3,7 +3,7 @@
 define ['jquery'], ($) ->
   ###
   @name          wrapped-maps-jquery
-  @description   wrapped-maps-jquery wrapped Google maps api v3 with using jQuery and Twitter Bootstrap.
+  @description   A jQuery plugin for Google maps api v3.
   @homepage      https://github.com/ikeikeikeike/wrapped-maps-jquery
   @support_url   https://github.com/ikeikeikeike/wrapped-maps-jquery/issues
   ###
