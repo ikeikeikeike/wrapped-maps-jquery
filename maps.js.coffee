@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
 define ['jquery'], ($) ->
-  ### wrapped-maps-jquery wrapped Google maps api v3 with jQuery and Twitter Bootstrap. ###
+  ###
+  @name          wrapped-maps-jquery
+  @description   wrapped-maps-jquery wrapped Google maps api v3 with using jQuery and Twitter Bootstrap.
+  @homepage      https://github.com/ikeikeikeike/wrapped-maps-jquery
+  @support_url   https://github.com/ikeikeikeike/wrapped-maps-jquery/issues
+  ###
   #
   #
 
@@ -23,17 +28,17 @@ define ['jquery'], ($) ->
       google.maps.Marker
       google.maps.MapTypeId
       google.maps.event
+      jQuery("html")
     catch error
       throw error
-
 
   try
     module_checker()
   catch error
-    console.log "Required module in maps.js:: #{error}"
+    console.log "[wrapped-maps-jquery] Required module error: #{error}, Required module in maps.js."
 
 
-  ### Return object ###
+  ### Main object ###
   #
   #
   MAPSMODULE = {}
@@ -63,10 +68,33 @@ define ['jquery'], ($) ->
         @options[key] = value
 
     get_newobj: ->
-      ### Get map object ###
+      ### Get new object ###
       #
       #
       @newobj
+
+    set_newobj: (@newobj) ->
+      ### Set new object ###
+      #
+      #
+
+    set_value: (value) ->
+      ### Set value to a dom ###
+      #
+      #
+      (@el?.val? or @el?.text?) value
+
+    get_value: (key) ->
+      ### Get value of a dom ###
+      #
+      #
+      (@el?.val? or @el?.text?)()
+
+    compute: (num) ->
+      ### Compute lat and lng ###
+      #
+      #
+      Math.round(num * 1000000000) / 1000000000
 
 
   class MAPSMODULE.Event
@@ -116,14 +144,14 @@ define ['jquery'], ($) ->
       @statues[@directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります。'
       @statues[@directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした。'
 
-    getMessage: (status) ->
+    get_message: (status) ->
       ### Get status message ###
       #
       #
       @statues[status]
 
 
-  class MAPSMODULE.DirectionsDisplay extends MAPSMODULE.BaseClass
+  class MAPSMODULE.DirectionsRenderer extends MAPSMODULE.BaseClass
     ### Wrapping class  ###
     #
     #
@@ -134,26 +162,74 @@ define ['jquery'], ($) ->
     options:
       draggable: yes
 
-    constructor: (directions_renderer=google.maps.DirectionsRenderer) ->
+    constructor: (@panel_name, options=null, @directions_renderer=google.maps.DirectionsRenderer) ->
       ### Initializer ###
       #
       #
 
       # Set options
       if options isnt null then @set_options options
-      @newobj = new @directions_renderer @options
+      @set_newobj new @directions_renderer(@options)
+      @set_panel @panel_name
+
+    set_map: (map) ->
+      ### Set map object ###
+      #
+      #
+      @get_newobj().setMap map
+
+    set_panel: (panel_name=@panel_name) ->
+      ### Set panel element name ###
+      #
+      #
+      @get_newobj().setPanel panel_name
+
+    set_directions: (results) ->
+      ### Set directionsService.route response results ###
+      #
+      #
+      @get_newobj().setDirections results
 
 
   class MAPSMODULE.DirectionsService extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
     #
-    constructor: (@directions_service, @status=MAPSMODULE.DirectionsStatue) ->
+
+    ### Route options ###
+    #
+    #
+    options:
+      origin: ''
+      destination: ''
+      waypoints: ''
+      optimizeWaypoints: true
+      avoidHighways: true
+      avoidTolls: true
+      travelMode: google.maps.DirectionsTravelMode.DRIVING
+      # transitOptions: {
+        # departureTime: new Date(1337675679473)
+      # }
+      # travelMode: google.maps.DirectionsTravelMode.TRANSIT
+      # unitSystem: google.maps.UnitSystem.IMPERIAL
+
+    constructor: (options=null, @directions_service=google.maps.DirectionsService, @status=MAPSMODULE.DirectionsStatue) ->
       ### Initializer ###
       #
       #
-      @newobj = new @directions_service()
+      @set_newobj new @directions_service()
       @status = new @status()
+
+    route: (options=@options, callback) ->
+      ### Request route ###
+      #
+      #
+      self = @
+      @get_newobj().route options, (response, status) ->
+        if status == google.maps.DirectionsStatus.OK
+          callback(response)
+        else
+          console.log "Directions Service ERROR: #{status}\n#{self.status.get_message status}"
 
 
   class MAPSMODULE.Geocorder extends MAPSMODULE.BaseClass
@@ -165,18 +241,18 @@ define ['jquery'], ($) ->
       ### Initializer ###
       #
       #
-      @newobj = new @geocoder()
+      @set_newobj new @geocoder()
 
     address_to_latlng: (address, callback) ->
       ### Convert from address to latlng ###
       #
       #
-      @newobj {'address': address}, (results, status) =>
+      @get_newobj().geocode {'address': address}, (results, status) =>
         m = if status is @status.OK then "ok" else "Geocode was not successful for the following reason: #{status}"
         callback results, status, m
 
 
-  class MAPSMODULE.InfoWindow extends MAPSMODULE.BaseClass
+  class MAPSMODULE.Marker extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
     #
@@ -193,7 +269,7 @@ define ['jquery'], ($) ->
       ### Initializer ###
       #
       #
-      @newobj = @get_new()
+      @set_newobj @get_new()
 
     get_new: (options=@options) ->
       ### Get new object ###
@@ -202,33 +278,55 @@ define ['jquery'], ($) ->
       new @marker options
 
 
-  class MAPSMODULE.InfoWindow
+  class MAPSMODULE.InfoWindow extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
     #
+    options:
+      map: null
+      marker: null
+      content: ''
 
-    constructor: (@map, @marker, @info_window=google.maps.InfoWindow) ->
+    default_template: """
+    <div class="">
+      <div class="modal-header modal-header-wrapper">
+        <h3>{title}</h3>
+      </div>
+      <div class="modal-body">
+        {body}
+      </div>
+    </div>
+    """
+
+    constructor: (@el_name='#infowindow', @optins=null, @infowindow=google.maps.InfoWindow) ->
       ### Initializer ###
       #
       #
+      @el = $ @el_name
 
-    open: (options) ->
-      ### open ###
-      #
-      #
-      new @info_window(options).open
+      # Set options
+      if options isnt null then @set_options options
 
-    content: (content) ->
-      ### Create infomation and pen ###
+    get_template: () ->
+      ### Get default template or Element ###
       #
       #
-      @open({content: content}) @map, @marker
+      if @el.is '*'
+        @el.html()
+      else
+        @default_template
 
-    options: (options) ->
-      ### Create infomation and open ###
+    render_template: (title, body) ->
+      ### ###
       #
       #
-      @open(options) @map, @marker
+      template = template.replace '{title}', title
+      template.replace '{body}', body
+
+    open: (map=@options.map, marker=@options.marker) ->
+      ### Open info window ###
+      #
+      #
 
 
   class MAPSMODULE.Map extends MAPSMODULE.BaseClass
@@ -240,7 +338,7 @@ define ['jquery'], ($) ->
     #
     el: null
 
-    ### Render options ###
+    ### Renderer options ###
     #
     #
     options:
@@ -252,7 +350,7 @@ define ['jquery'], ($) ->
       scaleControlOptions:
         position: google.maps.ControlPosition.BOTTOM_CENTER
 
-    constructor: (@el_name, options=null, @map=google.maps.Map) ->
+    constructor: (@el_name='#googlemaps', options=null, @map=google.maps.Map) ->
       ### Initializer ###
       #
       #
@@ -263,7 +361,7 @@ define ['jquery'], ($) ->
       if options isnt null then @set_options options
 
       # New object
-      @newobj = @get_new()
+      @set_newobj @get_new()
 
     get_new: (el=@el, options=@options) ->
       ### Get new map object ###
@@ -271,9 +369,92 @@ define ['jquery'], ($) ->
       #
       new @map el.get(0), options
 
+    get_address: ->
+      ### Address ###
+      #
+      #
+      @el.attr 'address'
+
+    get_title: ->
+      ### Title ###
+      #
+      #
+      @el.attr 'title'
+
+    get_content: ->
+      ### Content ###
+      #
+      #
+      @el.attr 'content'
+
+  class MAPSMODULE.RouteInfoPanel extends MAPSMODULE.BaseClass
+    ### Route infomation panel ###
+    #
+    #
+
+    ### TOP element ###
+    #
+    #
+    el: null
+
+    constructor: (@el_name='#info_panel') ->
+      ### Initializer ###
+      #
+      #
+      @el = $ @el_name
+
+    set_total_distance: (results, object) ->
+      ### Set total distance ###
+      #
+      #
+      data = ''
+      for routes in results.routes
+        for overview_path in routes.overview_path
+          data += "#{@compute overview_path.lng()},#{@compute overview_path.lat()}\n"
+      @set_value data
+
+
+  class MAPSMODULE.RouteDirectionsPanel extends MAPSMODULE.BaseClass
+    ### Route result panel ###
+    #
+    #
+
+    ### TOP element ###
+    #
+    #
+    el: null
+
+    ### Rirections options ###
+    #
+    #
+    options:
+      total: '#total'
+
+    constructor: (@el_name='#directions_panel', options=null) ->
+      ### Initializer
+      @param {String} el_name - Top element name.
+      @param {Object} options - options.
+
+      .. Options, e.g. ::
+
+          options =
+            total: '#total'
+      ###
+      #
+      #
+      @el = $ @el_name
+
+    set_total_distance: (results, object) ->
+      ### Set total distance ###
+      #
+      #
+      total = 0
+      for legs in results.routes[0].legs
+        total += legs.distance.value
+      @el.find(@options.total).text total / 1000 + " km"
 
   class MAPSMODULE.RouteControlPanel extends MAPSMODULE.BaseClass
-    ### Route search class ###
+    ### Route controller panel ###
     #
     #
 
@@ -286,16 +467,34 @@ define ['jquery'], ($) ->
     #
     #
     options:
+      focus:
+        input: true
+        next: true
       start:
-        point: 'start_point_id'
-        checked: 'start_checked_id'
+        point: '#start_point'
+        checked: '#start_checked'
       end:
-        point: 'end_point_id'
-        checked: 'end_checked_id'
+        point: '#end_point'
+        checked: '#end_checked'
       way:
-        point: 'way_point_id'
+        point: '#way_point'
+        checked: '#way_checked'
+        nontollway: '#way_nontollway'
+        nonhighway: '#way_nonhighway'
+      # event:
+        # route: '#click_route'
+        # clearaddr: '#click_clearaddr'
+      event:
+        route:
+          id: '#click_route'
+          event:
+            click: (event, cls) ->
+        clearaddr:
+          id: '#click_clearaddr'
+          event:
+            click: (event, cls) ->
 
-    constructor: (@el_name='control_panel', options=null) ->
+    constructor: (@el_name='#control_panel', options=null) ->
       ### Initializer
       @param {String} el_name - Top element name.
       @param {Object} options - Contoller options.
@@ -303,15 +502,35 @@ define ['jquery'], ($) ->
       .. Options, e.g. ::
 
           options =
+            focus:
+              input: true
+              next: true
             start:
-              point: 'start_point_id'
-              checked: 'start_checked_id'
+              point: '#start_point'
+              checked: '#start_checked'
             end:
-              point: 'end_point_id'
-              checked: 'end_checked_id'
+              point: '#end_point'
+              checked: '#end_checked'
             way:
-              point: 'way_point_id'
+              point: '#way_point'
+              checked: '#way_checked'
+              nontollway: '#way_nontollway'
+              nonhighway: '#way_nonhighway'
 
+            ## event or event ##
+            event:
+              route: '#click_route'
+              clearaddr: '#click_clearaddr'
+            event:
+              route:
+                id: '#click_route'
+                event:
+                  click: (event, cls) ->
+              clearaddr:
+                id: '#click_clearaddr'
+                event:
+                  click: (event, cls) ->
+                  dblclick: (event, cls) -> # TODO: Multiple event, Not implemention.
       ###
       #
       #
@@ -320,7 +539,14 @@ define ['jquery'], ($) ->
       # Set controller
       @set_selectors(options or @options)
       # gen html
+
       # @generate_html
+
+      # Push latlng value
+      if @options.focus.input is true then @push_value()
+
+      # Add event auto flg
+      # @add_events(callback)
 
     set_selectors: (selectors) ->
       ### Controller selectors ###
@@ -336,6 +562,7 @@ define ['jquery'], ($) ->
       end.point
 
       way = selectors?.way
+      way.checked
       way.point
 
     generate_html: (selectors) ->
@@ -349,19 +576,25 @@ define ['jquery'], ($) ->
         op = op[i]
       op
 
-    get_element: (selector) ->
+    get_element: (key) ->
       ### ###
       #
       #
-      $ selector
+      $ @get_selector(key)
 
-    set_value: (key) ->
-      ### Set value to the panel ###
+    set_value: (key, value) ->
+      ### Set value to a panel ###
       #
       #
-      elm = @get_element @get_selector(key)
-      elm?.val value
-      elm?.text value
+      elm = @get_element key
+      (elm?.val? or elm?.text?) value
+
+    get_value: (key) ->
+      ### Get value of a panel ###
+      #
+      #
+      elm = @get_element key
+      (elm?.val? or elm?.text?)()
 
     set_value_tostart: (value) ->
       ### ###
@@ -375,43 +608,220 @@ define ['jquery'], ($) ->
       #
       @set_value 'end.point', value
 
-  class MAPSMODULE.RenderMap extends MAPSMODULE.BaseClass
+    set_value_toway: (value) ->
+      ### ###
+      #
+      #
+      @set_value 'way.point', "#{@get_value 'way.point'}#{value}\n"
+
+    set_point: (latlng, object=null) ->
+      ### Set latLng to dom and next focus. ###
+      #
+      #
+      if is_checked 'start.checked'
+        @set_value_tostart latlang
+        @next_focus 'start.point'
+      else if is_checked 'end.checked'
+        @set_value_toend latlang
+        @next_focus 'end.point'
+      else if is_checked 'way.checked'
+        @set_value_toway latlang
+      else
+        console.log '[RouteControlPanel.set_point] Not checked error.'
+
+    next_focus: (key) ->
+      ### Next focus for input text ###
+      #
+      #
+      if @options.focus.next
+        @get_element(
+          if key is "start.point"
+            "end.point"
+          else if key is "end.point"
+            "way.point"
+        ).focus()
+
+    is_checked: (key) ->
+      ### Check push value element ###
+      #
+      #
+      elm = @get_element key
+
+      if elm.checked
+        true
+      else if @_push_value_el is null
+        false
+      else if @_push_value_el.is elm
+        true
+      else
+        false
+
+    ### Current fucus element ###
+    #
+    #
+    _push_value_el: null
+    push_value: ->
+      ### Set current focus ###
+      #
+      #
+      self = @
+      @get_element('start.point').focus(-> self._push_value_el = $ @).blur -> self._push_value_el = null
+      @get_element('end.point').focus(-> self._push_value_el = $ @).blur -> self._push_value_el = null
+      @get_element('way.point').focus(-> self._push_value_el = $ @).blur -> self._push_value_el = null
+
+    _get_objkey: (object) ->
+      ### For one object ###
+      #
+      #
+      (k for k, v of object)[0]
+
+    _get_objvalue: (object) ->
+      ### For one object ###
+      #
+      #
+      (v for k, v of object)[0]
+
+    on: (object=null) ->
+      ### Utility ###
+      #
+      #
+      $(object.id).on object.event, {maincallback: object.maincallback, usercallback: object.usercallback}, object.method
+
+    add_route_event: (object=null) ->
+      ### Add events listener ###
+      #
+      # Route event
+      #
+      if not @options.event
+        @on
+          id: @options.event.route
+          event: 'click'
+          method: @on_route
+          callback:
+            main: callback
+            user: null
+      else
+        route = @options.event.route
+        @on
+          id: route.id
+          event: @_get_objkey route
+          method: @on_route
+          callback:
+            main: callback
+            user: @_get_objvalue route
+
+    add_clearaddr_event: (object=null) ->
+      ### Add events listener ###
+      #
+      # ClearAddress event
+      #
+      if not @options.event
+        @on
+          id: @options.event.clearaddr
+          event: 'click'
+          method: @on_clearaddr
+          callback:
+            main: callback
+            user: null
+      else
+        clearaddr = @options.event.clearaddr
+        @on
+          id: clearaddr.id
+          event: @_get_objkey clearaddr
+          method: @on_clearaddr
+          callback:
+            main: callback
+            user: @_get_objvalue clearaddr
+
+    on_clearaddr: (event) ->
+      ###  ###
+      #
+      #
+      event?.usercallback()
+      event?.maincallback()
+
+    on_route: (event) ->
+      ### Route search request ###
+      #
+      #
+
+      # Start
+      start = @get_value 'start.point'
+      # End
+      end = @get_value 'end.point'
+      # Non highway
+      hw = if @get_element("way.nonhighway").checked then true else false
+      # Non tollway
+      toll = if @get_element("way.nontollway").checked then true else false
+      # Way point
+      waypts = []
+      for wats in @get_value("way.point").split "\n"
+        if wats != '' then waypts.push {location: wats, stopover: true}
+
+      # Add parameter
+      event.control_panel =
+        options: {start, end, hw, toll, waypts}
+
+      # Call
+      event?.usercallback event, @
+      event?.maincallback event, @
+
+  class MAPSMODULE.RenderRouteMap extends MAPSMODULE.BaseClass
     ### Route map class ###
     #
     #
-
-    ### Result ###
-    #
-    # .. note:: Result panel
-    #
-    direct_panel_el: null
-
-    ### Controller ###
-    #
-    #
-    control_panel_el: null
 
     ### Control panel ###
     #
     #
     control_panel: MAPSMODULE.RouteControlPanel
 
+    ### Result panel ###
+    #
+    #
+    direct_panel: MAPSMODULE.RouteDirectionsPanel
+
+    ### Info panel ###
+    #
+    #
+    info_panel: MAPSMODULE.RouteInfoPanel
+
+    ### Direction Renderer object ###
+    #
+    #
+    direct_render: MAPSMODULE.DirectionsRenderer
+
+    ### Direction Service object ###
+    #
+    #
+    direct_service: MAPSMODULE.DirectionsService
+
     ### Map object ###
     #
     #
     map: MAPSMODULE.Map
+
+    ### Marker object ###
+    #
+    #
+    marker: MAPSMODULE.Marker
+
+    ### InfoWindow object ###
+    #
+    #
+    infowindow: MAPSMODULE.InfoWindow
 
     ### Event object ###
     #
     #
     event: MAPSMODULE.Event
 
-    ### Direction display object ###
+    ### Geocorder object ###
     #
     #
-    direct_disp: null
+    geocorder: MAPSMODULE.Geocorder
 
-    constructor: (@place=null, options=null) ->
+    constructor: (options=null) ->
       ### Initializer
       @param {String|Object} place - Address{String} or Google latlng{Object}.
       @param {Object} options - Options for rendering map.
@@ -420,52 +830,50 @@ define ['jquery'], ($) ->
 
           options =
             direct_panel:
-              name: 'direct_panel'
+              obj: new RouteDirectionsPanel("#directions_panel")
+              name: '#directions_panel'
+              options: null
             control_panel:
-              obj: new RouteControlPanel("control_panel")
-              name: 'direct_panel'
+              obj: new RouteControlPanel("#control_panel")
+              name: '#direct_panel'
+              options: {}
+            info_panel:
+              obj: new RouteInfoPanel("#info_panel")
+              name: '#info_panel'
+              options: {}
+            direct_render:
+              obj: new DirectionsRenderer('#renderer')
+              name: '#renderer'
               options: {}
             map:
-              obj: new Map("map")
-              name: map
+              obj: new Map("#map")
+              name: '#map'
               options: {}
+
       ###
       #
       #
 
       # Set direct_panel
-      @direct_panel_name = options?.direct_panel.name || null
-      @direct_panel_el = @direct_panel_name and $ @direct_panel_name
+      @set_option_class options, 'direct_panel'
 
       # Set control panel
-      @set_option_class(options, 'control_panel')
+      @set_option_class options, 'control_panel'
 
-      # control_panel = options?.control_panel
+      # Set info_panel
+      @set_option_class options, 'info_panel'
 
-      # controlobj = control_panel?.obj || null
-      # if controlobj isnt null
-        # @control_panel = controlobj
-      # else
-        # # Map options
-        # name = control_panel?.name or null
-        # if name is null
-          # throw new Error """[RenderMap.constructor] Arguments error:
-            # options.control_panel.name is require. (control_panel.name is #{name})"""
-        # @control_panel = new @control_panel name, control_panel.options
+      # Set directions renderer
+      @set_option_class options, 'direct_render'
 
       # Set map
-      map = options?.map
+      @set_option_class options, 'map'
 
-      mapobj = map?.obj || null
-      if mapobj isnt null
-        @map = mapobj
-      else
-        # Map options
-        name = map?.name or null
-        if name is null
-          throw new Error """[RenderMap.constructor] Arguments error:
-            options.map.name is require. (map.name is #{name})"""
-        @map = new @map name, map.options
+      # new
+      @set_option_class options, 'geocorder'
+
+      # My options
+      @place = options?.place
 
     set_option_class: (options, key) ->
       ### Set class to attribute ###
@@ -481,40 +889,146 @@ define ['jquery'], ($) ->
         # Obj options
         name = objs?.name or null
         if name is null
-          throw new Error """[RenderMap.constructor] Arguments error:
-            options.#{key}.name is require. (#{key}.name is #{name})"""
-        @[key] = new @[key] name, objs.options
+          console.log "[RenderRouteMap.constructor] Arguments error: options.#{key}.name is require. (#{key}.name is #{name})"
+        @[key] = new (
+          if (v for v of objs?.options).length
+            (@[key] name, objs.options)
+          else if name
+            (@[key] name)
+          else
+            @[key]
+        )
 
-    set_map: (map=@map) ->
-      ### Set map ###
-      #
-      #
-      @direct_disp.setMap map
-
-    set_direct_panel: (direct_panel_el=@direct_panel_el) ->
-      ### Set panel ###
-      #
-      #
-      if @direct_panel_el.length is 1
-        @direct_disp.setPanel direct_panel_el.get(0)
-      else
-        console.log "[RenderMap.set_direct_panel] Arguments error: (direct_panel_el is #{direct_panel_el})"
-
-    render_map: ->
+    run: (options={}) ->
       ### Render map ###
       #
       #
+      @get_latlng options?.place, (results, status, message) =>
+        ### Current latlng ###
+        #
+        #
+        latlng = results[0].geometry.location
+        console.log '[run] Request address: ', results, status, message
 
-      # directionsDisplay.setMap(map);
-      # directionsDisplay.setPanel(document.getElementById("directions_panel"));
+        # Set map to panel.
+        @set_map()
 
-      @event.on @map.get_newobj() 'click', @point_receiver
+        # Set directions panel
+        @set_direct_panel()
 
-    point_receiver: (mouse_event) =>
-      ### Event receiver ###
+        #
+        @open_infowindow latlng
+
+        ###
+        # @event.on @map.get_newobj() 'click', @click_event_receiver_formap
+
+          var myOptions = {
+              zoom: 14,
+              scrollwheel: false,
+              scaleControl: true,
+              center: latlng,
+              mapTypeId: google.maps.MapTypeId.ROADMAP,
+              scaleControlOptions: {position: google.maps.ControlPosition.BOTTOM_CENTER}
+          }
+
+          map = new google.maps.Map(document.getElementById("googlemaps"), myOptions);
+          directionsDisplay.setMap(map);
+          directionsDisplay.setPanel(document.getElementById("directions_panel"));
+
+          marker = new google.maps.Marker({
+            position: latlng,   // マーカーの位置
+            map: map,   // 表示する地図
+            title: title   // ロールオーバー テキスト
+          });
+
+          // 吹き出しを作成します
+          infowindow = new google.maps.InfoWindow({content: content});
+
+          // 吹き出しをオープンします
+          infowindow.open(map, marker);
+
+          // クリックしたときに吹き出しがオープンするイベントを定義します
+          google.maps.event.addListener(marker, 'click', function() {
+            infowindow.open(map, marker);
+          });
+
+          google.maps.event.addListener(map, 'click', function(mouseEvent) {
+              setPoints(map, mouseEvent.latLng);
+          });
+          google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
+              computeTotalDistance(directionsDisplay.directions);
+          });
+
+        ###
+
+    get_latlng: (place=@place, callback) ->
+      ### Get latlng ###
       #
       #
-      @control_panel.set_points @map.get_newobj(), mouse_event.latLng
+      @geocorder.address_to_latlng place or @map.get_address(), (results, status, message) ->
+        callback results, status, message
+
+    get_marker: (latlng, title=@map.get_title(), map=@map.get_newobj()) ->
+      ### Get marker object ###
+      #
+      #
+      new @marker
+        positoin: latlng
+        title: title
+        map: map
+
+    @open_info: (latlng, map=@map.get_newobj()) ->
+      ### Open info window ###
+      #
+      #
+      # Get marker object
+      marker = @get_marker latlng
+      @infowindow.open map, marker
+
+    set_map: (map=@map.get_newobj()) ->
+      ### Set map ###
+      #
+      #
+      @direct_render.set_map map
+
+    set_direct_panel: (direct_panel_el=@direct_panel.el) ->
+      ### Set panel ###
+      #
+      #
+      if direct_panel_el.is '*'
+        @direct_render.set_panel direct_panel_el.get 0
+      else
+        console.log "[RenderRouteMap.set_direct_panel] Arguments error: (direct_panel_el is #{direct_panel_el})"
+
+    click_event_receiver_route: (event, cls) =>
+      ### From control panel ###
+      #
+      #
+
+    click_event_receiver_clearaddr: (event, cls) =>
+      ### From control panel ###
+      #
+      #
+
+    click_event_receiver_formarker: (event) =>
+      ### Mouse event receiver ###
+      #
+      #
+      @infowindow.open @map.get_newobj(), @marker.get_newobj()
+
+    click_event_receiver_formap: (event) =>
+      ### Mouse event receiver ###
+      #
+      #
+      @control_panel.set_point event.latLng, @map.get_newobj()
+
+    directions_changed_receiver_formap: (event) ->
+      ### Directions changed event receiver ###
+      #
+      #
+      newobj = @direct_render.get_newobj()
+      @direct_panel.set_total_distance newobj.directions, newobj
+      @info_panel.set_total_distance newobj.directions, newobj
 
 
   MAPSMODULE
