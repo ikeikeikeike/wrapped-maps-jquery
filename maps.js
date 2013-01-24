@@ -12,8 +12,12 @@
       @support_url   https://github.com/ikeikeikeike/wrapped-maps-jquery/issues
     */
 
-    var MAPSMODULE, module_checker;
-    module_checker = function() {
+    /* Main object
+    */
+
+    var MAPSMODULE;
+    MAPSMODULE = {};
+    MAPSMODULE.module_checker = function() {
       /* Using modules
       */
       try {
@@ -30,20 +34,16 @@
         google.maps.Marker;
         google.maps.MapTypeId;
         google.maps.event;
-        return jQuery("html");
+        jQuery("html");
       } catch (error) {
-        throw error;
+        console.log("[wrapped-maps-jquery] Required module error: " + error + ", Required module in maps.js.");
+        return false;
       }
+      return true;
     };
-    try {
-      module_checker();
-    } catch (error) {
-      console.log("[wrapped-maps-jquery] Required module error: " + error + ", Required module in maps.js.");
+    if (MAPSMODULE.module_checker() === false) {
+      return MAPSMODULE;
     }
-    /* Main object
-    */
-
-    MAPSMODULE = {};
     MAPSMODULE.BaseClass = (function() {
 
       function BaseClass() {}
@@ -264,25 +264,67 @@
         */
 
         if (options !== null) {
-          this.set_options(options);
+          this.set_options(this.check_options(options));
         }
         this.set_newobj(new this.directions_service());
         this.status = new this.status();
       }
 
-      DirectionsService.prototype._route = function(callback) {
+      DirectionsService.prototype.check_options = function(options) {
+        /* Check options
+        */
+
+        var d, travelmode;
+        travelmode = google.maps.DirectionsTravelMode;
+        if (!options.travelMode) {
+          options.travelMode = this.options.travelMode;
+        } else if (options.travelMode === travelmode.TRANSIT) {
+          d = new Date();
+          d.setTime(new Date().getTime() + (60 * 60 * 1000));
+          options.travelMode = travelmode.TRANSIT;
+          options.transitOptions = {
+            departureTime: d
+          };
+          options.unitSystem = google.maps.UnitSystem.IMPERIAL;
+        } else if (options.travelMode === travelmode.BICYCLING) {
+          console.log(travelmode.BICYCLING);
+        } else if (options.travelMode === travelmode.WALKING) {
+          console.log(travelmode.WALKING);
+        }
+        return options;
+      };
+
+      DirectionsService.prototype._route = function(callback, options) {
+        var self;
+        if (options == null) {
+          options = this.options;
+        }
         /* Request route
         */
 
-        var self;
         self = this;
-        return this.get_newobj().route(this.options, function(response, status) {
-          if (status === google.maps.DirectionsStatus.OK) {
-            return callback(response);
-          } else {
-            return console.log("Directions Service ERROR: " + status + "\n" + (self.status.get_message(status)));
-          }
-        });
+        options = this.check_options(options);
+        if (this.correspond_beta_for_transit(options)) {
+          return this.get_newobj().route(options, function(response, status) {
+            var message_, st, status_;
+            if (status === google.maps.DirectionsStatus.OK) {
+              st = {
+                status: status,
+                message: '',
+                bool: true
+              };
+            } else {
+              status_ = "Directions Service Error: " + status;
+              message_ = "\n" + (self.status.get_message(status));
+              st = {
+                status: status_,
+                message: message_,
+                bool: false
+              };
+            }
+            return callback(response, st);
+          });
+        }
       };
 
       DirectionsService.prototype.route = function(options, callback) {
@@ -292,9 +334,26 @@
         /* Request route
         */
 
-        return this._route(function() {
-          return callback;
-        });
+        return this._route(callback, this.check_options(options));
+      };
+
+      DirectionsService.prototype.correspond_beta_for_transit = function(options) {
+        var url, w;
+        if (options == null) {
+          options = this.options;
+        }
+        /* For transit
+        */
+
+        if (this.options.travelMode === google.maps.DirectionsTravelMode.TRANSIT) {
+          if (window.confirm("交通機関は現在Beta版のため提供しているAPIが不完全です\n「OK」を選択すると引続きGoogleMaps上で検索します\n\n    https://maps.google.comで検索しますか？")) {
+            url = "https://maps.google.co.jp/maps?saddr=" + options.origin + "&daddr=" + options.destination + "&hl=ja&ie=UTF8&sll=35.706586,139.767723&sspn=0.040633,0.076818&ttype=now&noexp=0&noal=0&sort=def&mra=ltm&t=m&z=13&start=0";
+            w = window.open();
+            w.location.href = url;
+            return false;
+          }
+        }
+        return true;
       };
 
       return DirectionsService;
@@ -743,6 +802,15 @@
           nontollway: '#way_nontollway',
           nonhighway: '#way_nonhighway'
         },
+        tab: {
+          direct: '#tab_direct',
+          control: '#tab_control',
+          info: '#tab_info'
+        },
+        travelmode: {
+          group: '#travelmode-group'
+        },
+        erralert: '#erralert',
         event: {
           route: {
             id: '#click_route',
@@ -767,6 +835,8 @@
         this.on_route = __bind(this.on_route, this);
 
         this.on_clearaddr = __bind(this.on_clearaddr, this);
+
+        this.show_error = __bind(this.show_error, this);
 
         /* Initializer
         @param {String} el_name - Top element name.
@@ -814,6 +884,14 @@
         if (this.options.focus.input === true) {
           this.focus_input();
         }
+        $('#show_control_panel').on('click', function() {
+          $('#show_control_panel').addClass("hide");
+          return $('#control_panel').removeClass("hide");
+        });
+        $('#hide_control_panel').on('click', function() {
+          $('#control_panel').addClass("hide");
+          return $('#show_control_panel').removeClass("hide");
+        });
       }
 
       RouteControlPanel.prototype.set_selectors = function(selectors) {
@@ -899,7 +977,8 @@
           this.set_value_toend(latlng);
           return this.next_focus('end.point');
         } else if (this.is_checked('way.checked')) {
-          return this.set_value_toway(latlng);
+          this.set_value_toway(latlng);
+          return this.scroll_bottom('way.point');
         } else {
           return console.log('[RouteControlPanel.set_point] Not checked error.');
         }
@@ -920,6 +999,37 @@
         } else {
           return false;
         }
+      };
+
+      RouteControlPanel.prototype.scroll_bottom = function(key) {
+        /* Scroller
+        */
+
+        var w;
+        w = this.get_element(key);
+        return w.scrollTop(w.prop('scrollHeight'));
+      };
+
+      RouteControlPanel.prototype.show_direct_tab = function() {
+        /* Show tabs
+        */
+        return this.show_tab(this.options.tab.direct);
+      };
+
+      RouteControlPanel.prototype.show_control_tab = function() {
+        /* Show tabs
+        */
+        return this.show_tab(this.options.tab.control);
+      };
+
+      RouteControlPanel.prototype.show_tab = function(anchor) {
+        /* Show tabs
+        */
+
+        var $tab;
+        $tab = $("[data-toggle='tab'][href='" + anchor + "']");
+        $.Event("click").preventDefault();
+        return $tab.click();
       };
 
       /* Current fucus element
@@ -1085,6 +1195,26 @@
         }
       };
 
+      RouteControlPanel.prototype.get_travelmode = function() {
+        /* Get travelmode
+        */
+        return this.get_element('travelmode.group').find('.active').val();
+      };
+
+      RouteControlPanel.prototype.show_error = function(message, status) {
+        /* Show message
+        */
+
+        var alt;
+        alt = this.get_element('erralert');
+        alt.find('strong').text(status);
+        alt.find('span').text(message);
+        alt.show();
+        return alt.find('.close').off("click").on("click", function(e) {
+          return $(this).parent().hide();
+        });
+      };
+
       RouteControlPanel.prototype.on_clearaddr = function(event) {
         /* Clear form
         */
@@ -1106,11 +1236,12 @@
         /* Route search request
         */
 
-        var end, hw, start, toll, wats, waypts, _i, _len, _ref, _ref1, _ref2;
+        var end, hw, mode, start, toll, wats, waypts, _i, _len, _ref, _ref1, _ref2;
         start = this.get_value('start.point');
         end = this.get_value('end.point');
         hw = this.get_element("way.nonhighway").attr('checked') ? true : false;
         toll = this.get_element("way.nontollway").attr('checked') ? true : false;
+        mode = this.get_travelmode();
         waypts = [];
         _ref = this.get_value("way.point").split("\n");
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -1128,6 +1259,7 @@
             end: end,
             hw: hw,
             toll: toll,
+            mode: mode,
             waypts: waypts
           }
         };
@@ -1400,13 +1532,19 @@
               waypoints: options.waypts,
               optimizeWaypoints: true,
               avoidHighways: options.hw,
-              avoidTolls: options.toll
+              avoidTolls: options.toll,
+              travelMode: options.mode
             });
-            return service._route(function(response) {
+            return service._route(function(response, status) {
               /* request calc route
               */
-              _this.direct_render.set_directions(response);
-              return _this.info_panel.set_total_distance(response);
+              if (status.bool) {
+                _this.control_panel.show_direct_tab();
+                _this.direct_render.set_directions(response);
+                return _this.info_panel.set_total_distance(response);
+              } else {
+                return _this.control_panel.show_error(status.message, status.status);
+              }
             });
           });
           _this.event.on(marker.get_newobj(), 'click', function(event) {
@@ -1417,6 +1555,7 @@
           _this.event.on(_this.map.get_newobj(), 'click', function(event) {
             /* Mouse event receiver
             */
+            _this.control_panel.show_control_tab();
             return _this.control_panel.set_point(event.latLng, _this.map.get_newobj());
           });
           return _this.event.on(_this.direct_render.get_newobj(), 'click', function(event) {

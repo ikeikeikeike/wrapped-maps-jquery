@@ -10,7 +10,13 @@ define ['jquery'], ($) ->
   #
   #
 
-  module_checker = ->
+  ### Main object ###
+  #
+  #
+  MAPSMODULE = {}
+
+
+  MAPSMODULE.module_checker = ->
     ### Using modules ###
     #
     #
@@ -30,19 +36,11 @@ define ['jquery'], ($) ->
       google.maps.event
       jQuery("html")
     catch error
-      throw error
+      console.log "[wrapped-maps-jquery] Required module error: #{error}, Required module in maps.js."
+      return no
+    yes
 
-  try
-    module_checker()
-  catch error
-    console.log "[wrapped-maps-jquery] Required module error: #{error}, Required module in maps.js."
-
-
-  ### Main object ###
-  #
-  #
-  MAPSMODULE = {}
-
+  if MAPSMODULE.module_checker() is false then return MAPSMODULE
 
   class MAPSMODULE.BaseClass
     ### Common methods ###
@@ -221,26 +219,104 @@ define ['jquery'], ($) ->
       #
       #
       # Set options
-      if options isnt null then @set_options options
+      if options isnt null then @set_options @check_options(options)
       @set_newobj new @directions_service()
       @status = new @status()
 
-    _route: (callback) ->
+    check_options: (options) ->
+      ### Check options ###
+      #
+      #
+
+      # Valiable
+      travelmode = google.maps.DirectionsTravelMode
+
+      if not options.travelMode
+        # Driving
+        #
+        #
+        options.travelMode = @options.travelMode
+
+      else if options.travelMode is travelmode.TRANSIT
+        # Transit
+        #
+        #  .. TODO:: Transit is beta.
+        #
+
+        # TODO: User input
+        d = new Date()
+        # 1 hour
+        d.setTime new Date().getTime() + (60 * 60 * 1000)
+
+        options.travelMode = travelmode.TRANSIT
+        options.transitOptions = departureTime: d
+        options.unitSystem = google.maps.UnitSystem.IMPERIAL
+
+      else if options.travelMode is travelmode.BICYCLING
+        # BICYCLING
+        #
+        # .. TODO:: Error
+        #
+        #
+        console.log travelmode.BICYCLING
+
+      else if options.travelMode is travelmode.WALKING
+        # WALKING
+        #
+        #  .. TODO:: Walkng is beta.
+        #
+        console.log travelmode.WALKING
+
+      options
+
+    _route: (callback, options=@options) ->
       ### Request route ###
       #
       #
       self = @
-      @get_newobj().route @options, (response, status) ->
-        if status == google.maps.DirectionsStatus.OK
-          callback response
-        else
-          console.log "Directions Service ERROR: #{status}\n#{self.status.get_message status}"
+      options = @check_options options
+
+      # For Beta.
+      if @correspond_beta_for_transit options
+        @get_newobj().route options, (response, status) ->
+          if status is google.maps.DirectionsStatus.OK
+            st =
+              status: status
+              message: ''
+              bool: true
+          else
+            status_ = "Directions Service Error: #{status}"
+            message_ = "\n#{self.status.get_message status}"
+            st =
+              status: status_
+              message: message_
+              bool: false
+
+          # Call
+          callback response, st
 
     route: (options=@options, callback) ->
       ### Request route ###
       #
       #
-      @_route -> callback
+      @_route callback, @check_options(options)
+
+    correspond_beta_for_transit: (options=@options) ->
+      ### For transit ###
+      #
+      #
+      if @options.travelMode is google.maps.DirectionsTravelMode.TRANSIT
+        if window.confirm """
+          交通機関は現在Beta版のため提供しているAPIが不完全です
+          「OK」を選択すると引続きGoogleMaps上で検索します
+
+              https://maps.google.comで検索しますか？
+          """
+          url ="https://maps.google.co.jp/maps?saddr=#{options.origin}&daddr=#{options.destination}&hl=ja&ie=UTF8&sll=35.706586,139.767723&sspn=0.040633,0.076818&ttype=now&noexp=0&noal=0&sort=def&mra=ltm&t=m&z=13&start=0"
+          w = window.open()
+          w.location.href = url
+          return no
+      yes
 
   class MAPSMODULE.Geocorder extends MAPSMODULE.BaseClass
     ### Wrapping class ###
@@ -571,6 +647,18 @@ define ['jquery'], ($) ->
         checked: '#way_checked'
         nontollway: '#way_nontollway'
         nonhighway: '#way_nonhighway'
+      tab:
+        direct: '#tab_direct'
+        control: '#tab_control'
+        info: '#tab_info'
+      travelmode:
+        group: '#travelmode-group'
+        # drive:
+        # bicycle: ''
+        # transit: ''
+        # walk: ''
+      erralert: '#erralert'
+
       # event:
         # route: '#click_route'
         # clearaddr: '#click_clearaddr'
@@ -640,6 +728,14 @@ define ['jquery'], ($) ->
 
       # Add event auto flg
       # @add_events(callback)
+
+      $('#show_control_panel').on 'click', ->
+        $('#show_control_panel').addClass("hide")
+        $('#control_panel').removeClass("hide")
+
+      $('#hide_control_panel').on 'click', ->
+        $('#control_panel').addClass("hide")
+        $('#show_control_panel').removeClass("hide")
 
     set_selectors: (selectors) ->
       ### Controller selectors ###
@@ -717,6 +813,7 @@ define ['jquery'], ($) ->
         @next_focus 'end.point'
       else if @is_checked 'way.checked'
         @set_value_toway latlng
+        @scroll_bottom 'way.point'
       else
         console.log '[RouteControlPanel.set_point] Not checked error.'
 
@@ -734,6 +831,32 @@ define ['jquery'], ($) ->
         true
       else
         false
+
+    scroll_bottom: (key) ->
+      ### Scroller ###
+      #
+      w = @get_element(key)
+      w.scrollTop w.prop('scrollHeight')
+
+    show_direct_tab: () ->
+      ### Show tabs ###
+      #
+      #
+      @show_tab @options.tab.direct
+
+    show_control_tab: () ->
+      ### Show tabs ###
+      #
+      #
+      @show_tab @options.tab.control
+
+    show_tab: (anchor) ->
+      ### Show tabs ###
+      #
+      #
+      $tab = $("[data-toggle='tab'][href='#{anchor}']")
+      $.Event("click").preventDefault()
+      $tab.click()
 
     ### Current fucus element ###
     #
@@ -842,6 +965,23 @@ define ['jquery'], ($) ->
             main: callback
             user: @_get_objvalue clearaddr.event
 
+    get_travelmode: () ->
+      ### Get travelmode ###
+      #
+      #
+      @get_element('travelmode.group').find('.active').val()
+
+    show_error: (message, status) =>
+      ### Show message ###
+      #
+      #
+      alt = @get_element('erralert')
+      alt.find('strong').text status
+      alt.find('span').text message
+      alt.show()
+      alt.find('.close').off("click").on "click", (e) ->
+        $(@).parent().hide()
+
     on_clearaddr: (event) =>
       ### Clear form  ###
       #
@@ -870,6 +1010,8 @@ define ['jquery'], ($) ->
       hw = if @get_element("way.nonhighway").attr 'checked' then true else false
       # Non tollway
       toll = if @get_element("way.nontollway").attr 'checked' then true else false
+      # Mode
+      mode = @get_travelmode()
       # Way point
       waypts = []
       for wats in @get_value("way.point").split "\n"
@@ -877,7 +1019,7 @@ define ['jquery'], ($) ->
 
       # Add parameter
       event.data.control_panel =
-        options: {start, end, hw, toll, waypts}
+        options: {start, end, hw, toll, mode, waypts}
 
       # Calls
       event.data?.usercallback event, @
@@ -1105,13 +1247,18 @@ define ['jquery'], ($) ->
             optimizeWaypoints: true
             avoidHighways: options.hw
             avoidTolls: options.toll
+            travelMode: options.mode
 
-          service._route (response) =>
+          service._route (response, status) =>
             ### request calc route ###
             #
             #
-            @direct_render.set_directions response
-            @info_panel.set_total_distance response
+            if status.bool
+              @control_panel.show_direct_tab()
+              @direct_render.set_directions response
+              @info_panel.set_total_distance response
+            else
+              @control_panel.show_error status.message, status.status
 
         @event.on marker.get_newobj(), 'click', (event) =>
           ### Mouse event receiver ###
@@ -1121,8 +1268,9 @@ define ['jquery'], ($) ->
 
         @event.on @map.get_newobj(), 'click', (event) =>
           ### Mouse event receiver ###
+
           #
-          #
+          @control_panel.show_control_tab()
           @control_panel.set_point event.latLng, @map.get_newobj()
 
         @event.on @direct_render.get_newobj(), 'click', (event) =>
