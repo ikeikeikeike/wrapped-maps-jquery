@@ -138,12 +138,12 @@ define ['jquery'], ($) ->
       #
       #
       @statues[@directions_status.INVALID_REQUEST] = 'DirectionsRequest が無効'
-      @statues[@directions_status.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です。'
-      @statues[@directions_status.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした。'
-      @statues[@directions_status.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました。'
-      @statues[@directions_status.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません。'
-      @statues[@directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります。'
-      @statues[@directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした。'
+      @statues[@directions_status.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です'
+      @statues[@directions_status.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした'
+      @statues[@directions_status.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました'
+      @statues[@directions_status.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません'
+      @statues[@directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります'
+      @statues[@directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした'
 
     get_message: (status) ->
       ### Get status message ###
@@ -355,6 +355,108 @@ define ['jquery'], ($) ->
       #
       @results[0].geometry.location
 
+
+  class MAPSMODULE.Geolocation extends MAPSMODULE.BaseClass
+    ### Wrapped geo ###
+    #
+    #
+    #
+    result: null
+
+    options:
+      maximumAge: 0
+      timeout: 2000
+      enableHighAccuracy: true
+
+    constructor: (options=null, @geolocation=@get_geo()) ->
+      ### Initializer ###
+      #
+      #
+
+      # Set options
+      if options isnt null then @set_options options
+
+    check_geo: ->
+      ### Checker ###
+      #
+      #
+      if navigator.geolocation then true else false
+
+    get_result: () ->
+      ### ###
+      #
+      #
+      @result
+
+    set_result: (@result) ->
+      ### ###
+      #
+      #
+
+    get_geo: ->
+      ### Getter ###
+      #
+      #
+      if @check_geo() then navigator.geolocation else null
+
+    get_current_location: (callback) ->
+        ### Using watchPosition api.
+
+        @param {Function} callback
+
+        ###
+        #
+        #
+        if @check_geo() is false
+          console.log "[Geolocation.get_current_location] Location error: Disabled navigator.geolocation."
+          return false
+
+        self = @
+        calcs = []
+        WAIT = 5000
+
+        # Watch
+        watch_id = @get_geo().watchPosition (position) ->
+          calcs.push {success: position}
+        , (error) ->
+          calcs.push {error: error}
+        , @get_options()
+
+        setTimeout ->
+          # Stop watchPosition
+          self.get_geo().clearWatch watch_id
+
+          # For calc
+          r = self.calc_location calcs
+
+          # CaLL
+          callback r, r.status
+
+        , WAIT
+
+    calc_location: (calcs) ->
+      ### Calc  ###
+      #
+      #
+      r =
+        status: false
+        coords: accuracy: 1000
+
+      for calc in calcs
+        if calc.success
+          # For success
+          if calc.success.coords.accuracy < r.coords.accuracy
+            # Put Succes object
+            r = calc.success
+            r.status = true
+        else if r.status is false
+          # Error re:calc
+          r = calc.error
+          r.status = false
+          r.coords = accuracy: 1000
+
+      @set_result r
+      r
 
   class MAPSMODULE.Marker extends MAPSMODULE.BaseClass
     ### Wrapping class ###
@@ -571,6 +673,7 @@ define ['jquery'], ($) ->
     set_total_distance: (results, object) ->
       ### Set total distance ###
       #
+      # TODO: Bugfix
       #
       data = ''
       for routes in results.routes
@@ -648,9 +751,13 @@ define ['jquery'], ($) ->
         nontollway: '#way_nontollway'
         nonhighway: '#way_nonhighway'
       tab:
+        show: '#tab_show'
+        hide: '#tab_hide'
         direct: '#tab_direct'
         control: '#tab_control'
         info: '#tab_info'
+      location:
+        current: "#location_current"
       travelmode:
         group: '#travelmode-group'
         # drive:
@@ -658,7 +765,6 @@ define ['jquery'], ($) ->
         # transit: ''
         # walk: ''
       erralert: '#erralert'
-
       # event:
         # route: '#click_route'
         # clearaddr: '#click_clearaddr'
@@ -679,9 +785,10 @@ define ['jquery'], ($) ->
 
       .. Options, e.g. ::
 
-          options =
+          options:
             focus:
               input: true
+              value: true
               next: true
             start:
               point: '#start_point'
@@ -694,11 +801,24 @@ define ['jquery'], ($) ->
               checked: '#way_checked'
               nontollway: '#way_nontollway'
               nonhighway: '#way_nonhighway'
-
-            ## event or event ##
-            event:
-              route: '#click_route'
-              clearaddr: '#click_clearaddr'
+            tab:
+              direct: '#tab_direct'
+              control: '#tab_control'
+              info: '#tab_info'
+              show: '#tab_show'
+              hide: '#tab_hide'
+            location:
+              current: "#location_current"
+            travelmode:
+              group: '#travelmode-group'
+              # drive:
+              # bicycle: ''
+              # transit: ''
+              # walk: ''
+            erralert: '#erralert'
+            # event:
+              # route: '#click_route'
+              # clearaddr: '#click_clearaddr'
             event:
               route:
                 id: '#click_route'
@@ -729,17 +849,28 @@ define ['jquery'], ($) ->
       # Add event auto flg
       # @add_events(callback)
 
-      $('#show_control_panel').on 'click', ->
-        $('#show_control_panel').addClass("hide")
-        $('#control_panel').removeClass("hide")
+      # Show start panel
+      @tab_panel()
 
-      $('#hide_control_panel').on 'click', ->
-        $('#control_panel').addClass("hide")
-        $('#show_control_panel').removeClass("hide")
+    tab_panel: ->
+      ### On map tab panel ###
+      #
+      #
+      self = @
+      op = @get_options()
+
+      $(op.tab.show).on 'click', ->
+        $(op.tab.show).addClass "hide"
+        $(self.el_name).removeClass "hide"
+
+      $(op.tab.hide).on 'click', ->
+        $(self.el_name).addClass "hide"
+        $(op.tab.show).removeClass "hide"
 
     set_selectors: (selectors) ->
       ### Controller selectors ###
       #
+      # TODO:
       #
 
       start = selectors?.start
@@ -1080,6 +1211,11 @@ define ['jquery'], ($) ->
     #
     geocorder: MAPSMODULE.Geocorder
 
+    ### Geolocation object ###
+    #
+    #
+    geolocation: MAPSMODULE.Geolocation
+
     constructor: (options=null) ->
       ### Initializer
       @param {String|Object} place - Address{String} or Google latlng{Object}.
@@ -1130,6 +1266,9 @@ define ['jquery'], ($) ->
 
       # new
       @set_option_class options, 'geocorder'
+
+      # new
+      @set_option_class options, 'geolocation'
 
       # My options
       @place = options?.place
@@ -1250,7 +1389,7 @@ define ['jquery'], ($) ->
             travelMode: options.mode
 
           service._route (response, status) =>
-            ### request calc route ###
+            ### Request calc route ###
             #
             #
             if status.bool

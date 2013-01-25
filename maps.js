@@ -158,12 +158,12 @@
         */
 
         this.statues[this.directions_status.INVALID_REQUEST] = 'DirectionsRequest が無効';
-        this.statues[this.directions_status.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です。';
-        this.statues[this.directions_status.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした。';
-        this.statues[this.directions_status.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました。';
-        this.statues[this.directions_status.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません。';
-        this.statues[this.directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります。';
-        this.statues[this.directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした。';
+        this.statues[this.directions_status.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です';
+        this.statues[this.directions_status.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした';
+        this.statues[this.directions_status.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました';
+        this.statues[this.directions_status.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません';
+        this.statues[this.directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります';
+        this.statues[this.directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした';
       }
 
       DirectionsStatue.prototype.get_message = function(status) {
@@ -411,6 +411,132 @@
       };
 
       return Geocorder;
+
+    })(MAPSMODULE.BaseClass);
+    MAPSMODULE.Geolocation = (function(_super) {
+
+      __extends(Geolocation, _super);
+
+      /* Wrapped geo
+      */
+
+
+      Geolocation.prototype.result = null;
+
+      Geolocation.prototype.options = {
+        maximumAge: 0,
+        timeout: 2000,
+        enableHighAccuracy: true
+      };
+
+      function Geolocation(options, geolocation) {
+        if (options == null) {
+          options = null;
+        }
+        this.geolocation = geolocation != null ? geolocation : this.get_geo();
+        /* Initializer
+        */
+
+        if (options !== null) {
+          this.set_options(options);
+        }
+      }
+
+      Geolocation.prototype.check_geo = function() {
+        /* Checker
+        */
+        if (navigator.geolocation) {
+          return true;
+        } else {
+          return false;
+        }
+      };
+
+      Geolocation.prototype.get_result = function() {
+        /*
+        */
+        return this.result;
+      };
+
+      Geolocation.prototype.set_result = function(result) {
+        return this.result = result;
+        /*
+        */
+
+      };
+
+      Geolocation.prototype.get_geo = function() {
+        /* Getter
+        */
+        if (this.check_geo()) {
+          return navigator.geolocation;
+        } else {
+          return null;
+        }
+      };
+
+      Geolocation.prototype.get_current_location = function(callback) {
+        /* Using watchPosition api.
+        
+        @param {Function} callback
+        */
+
+        var WAIT, calcs, self, watch_id;
+        if (this.check_geo() === false) {
+          console.log("[Geolocation.get_current_location] Location error: Disabled navigator.geolocation.");
+          return false;
+        }
+        self = this;
+        calcs = [];
+        WAIT = 5000;
+        watch_id = this.get_geo().watchPosition(function(position) {
+          return calcs.push({
+            success: position
+          });
+        }, function(error) {
+          return calcs.push({
+            error: error
+          });
+        }, this.get_options());
+        return setTimeout(function() {
+          var r;
+          self.get_geo().clearWatch(watch_id);
+          r = self.calc_location(calcs);
+          return callback(r, r.status);
+        }, WAIT);
+      };
+
+      Geolocation.prototype.calc_location = function(calcs) {
+        /* Calc
+        */
+
+        var calc, r, _i, _len;
+        r = {
+          status: false,
+          coords: {
+            accuracy: 1000
+          }
+        };
+        for (_i = 0, _len = calcs.length; _i < _len; _i++) {
+          calc = calcs[_i];
+          if (calc.success) {
+            if (calc.success.coords.accuracy < r.coords.accuracy) {
+              r = calc.success;
+              r.status = true;
+            }
+          } else if (r.status === false) {
+            r = calc.error;
+            r.status = false;
+            r.coords = {
+              accuracy: 1000
+            };
+          }
+        }
+        this.set_result(r);
+        return r;
+      };
+
+      return Geolocation;
 
     })(MAPSMODULE.BaseClass);
     MAPSMODULE.Marker = (function(_super) {
@@ -803,9 +929,14 @@
           nonhighway: '#way_nonhighway'
         },
         tab: {
+          show: '#tab_show',
+          hide: '#tab_hide',
           direct: '#tab_direct',
           control: '#tab_control',
           info: '#tab_info'
+        },
+        location: {
+          current: "#location_current"
         },
         travelmode: {
           group: '#travelmode-group'
@@ -844,9 +975,10 @@
         
         .. Options, e.g. ::
         
-            options =
+            options:
               focus:
                 input: true
+                value: true
                 next: true
               start:
                 point: '#start_point'
@@ -859,11 +991,24 @@
                 checked: '#way_checked'
                 nontollway: '#way_nontollway'
                 nonhighway: '#way_nonhighway'
-        
-              ## event or event ##
-              event:
-                route: '#click_route'
-                clearaddr: '#click_clearaddr'
+              tab:
+                direct: '#tab_direct'
+                control: '#tab_control'
+                info: '#tab_info'
+                show: '#tab_show'
+                hide: '#tab_hide'
+              location:
+                current: "#location_current"
+              travelmode:
+                group: '#travelmode-group'
+                # drive:
+                # bicycle: ''
+                # transit: ''
+                # walk: ''
+              erralert: '#erralert'
+              # event:
+                # route: '#click_route'
+                # clearaddr: '#click_clearaddr'
               event:
                 route:
                   id: '#click_route'
@@ -884,15 +1029,25 @@
         if (this.options.focus.input === true) {
           this.focus_input();
         }
-        $('#show_control_panel').on('click', function() {
-          $('#show_control_panel').addClass("hide");
-          return $('#control_panel').removeClass("hide");
-        });
-        $('#hide_control_panel').on('click', function() {
-          $('#control_panel').addClass("hide");
-          return $('#show_control_panel').removeClass("hide");
-        });
+        this.tab_panel();
       }
+
+      RouteControlPanel.prototype.tab_panel = function() {
+        /* On map tab panel
+        */
+
+        var op, self;
+        self = this;
+        op = this.get_options();
+        $(op.tab.show).on('click', function() {
+          $(op.tab.show).addClass("hide");
+          return $(self.el_name).removeClass("hide");
+        });
+        return $(op.tab.hide).on('click', function() {
+          $(self.el_name).addClass("hide");
+          return $(op.tab.show).removeClass("hide");
+        });
+      };
 
       RouteControlPanel.prototype.set_selectors = function(selectors) {
         /* Controller selectors
@@ -1340,6 +1495,12 @@
 
       RenderRouteMap.prototype.geocorder = MAPSMODULE.Geocorder;
 
+      /* Geolocation object
+      */
+
+
+      RenderRouteMap.prototype.geolocation = MAPSMODULE.Geolocation;
+
       function RenderRouteMap(options) {
         if (options == null) {
           options = null;
@@ -1379,6 +1540,7 @@
         this.set_option_class(options, 'direct_render');
         this.set_option_class(options, 'map');
         this.set_option_class(options, 'geocorder');
+        this.set_option_class(options, 'geolocation');
         this.place = options != null ? options.place : void 0;
       }
 
@@ -1536,7 +1698,7 @@
               travelMode: options.mode
             });
             return service._route(function(response, status) {
-              /* request calc route
+              /* Request calc route
               */
               if (status.bool) {
                 _this.control_panel.show_direct_tab();
