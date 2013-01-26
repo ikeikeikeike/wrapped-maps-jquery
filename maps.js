@@ -17,7 +17,7 @@
 
     var MAPSMODULE;
     MAPSMODULE = {};
-    MAPSMODULE.module_checker = function() {
+    MAPSMODULE.moduleChecker = function() {
       /* Using modules
       */
       try {
@@ -41,7 +41,7 @@
       }
       return true;
     };
-    if (MAPSMODULE.module_checker() === false) {
+    if (MAPSMODULE.moduleChecker() === false) {
       return MAPSMODULE;
     }
     MAPSMODULE.BaseClass = (function() {
@@ -58,13 +58,13 @@
 
       BaseClass.prototype.newobj = null;
 
-      BaseClass.prototype.get_options = function() {
+      BaseClass.prototype.getOptions = function() {
         /* Get options
         */
         return this.options;
       };
 
-      BaseClass.prototype.set_options = function(objects) {
+      BaseClass.prototype.setOptions = function(objects) {
         /* Set options by objects
         */
 
@@ -77,20 +77,20 @@
         return _results;
       };
 
-      BaseClass.prototype.get_newobj = function() {
+      BaseClass.prototype.getNewobj = function() {
         /* Get new object
         */
         return this.newobj;
       };
 
-      BaseClass.prototype.set_newobj = function(newobj) {
+      BaseClass.prototype.setNewobj = function(newobj) {
         return this.newobj = newobj;
         /* Set new object
         */
 
       };
 
-      BaseClass.prototype.set_value = function(value, el) {
+      BaseClass.prototype.setValue = function(value, el) {
         if (el == null) {
           el = this.el;
         }
@@ -104,7 +104,7 @@
         }
       };
 
-      BaseClass.prototype.get_value = function(el) {
+      BaseClass.prototype.getValue = function(el) {
         if (el == null) {
           el = this.el;
         }
@@ -152,21 +152,21 @@
 
       DirectionsStatue.prototype.statues = [];
 
-      function DirectionsStatue(directions_status) {
-        this.directions_status = directions_status != null ? directions_status : google.maps.DirectionsStatus;
+      function DirectionsStatue(directionsStatus) {
+        this.directionsStatus = directionsStatus != null ? directionsStatus : google.maps.DirectionsStatus;
         /* Initializer
         */
 
-        this.statues[this.directions_status.INVALID_REQUEST] = 'DirectionsRequest が無効';
-        this.statues[this.directions_status.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です';
-        this.statues[this.directions_status.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした';
-        this.statues[this.directions_status.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました';
-        this.statues[this.directions_status.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません';
-        this.statues[this.directions_status.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります';
-        this.statues[this.directions_status.ZERO_RESULTS] = 'ルートを見つけられませんでした';
+        this.statues[this.directionsStatus.INVALID_REQUEST] = 'DirectionsRequest が無効';
+        this.statues[this.directionsStatus.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です';
+        this.statues[this.directionsStatus.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした';
+        this.statues[this.directionsStatus.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました';
+        this.statues[this.directionsStatus.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません';
+        this.statues[this.directionsStatus.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります';
+        this.statues[this.directionsStatus.ZERO_RESULTS] = 'ルートを見つけられませんでした';
       }
 
-      DirectionsStatue.prototype.get_message = function(status) {
+      DirectionsStatue.prototype.getMessage = function(status) {
         /* Get status message
         */
         return this.statues[status];
@@ -191,42 +191,42 @@
         draggable: true
       };
 
-      function DirectionsRenderer(panel_name, options, directions_renderer) {
-        this.panel_name = panel_name;
+      function DirectionsRenderer(panelName, options, directionsRenderer) {
+        this.panelName = panelName;
         if (options == null) {
           options = null;
         }
-        this.directions_renderer = directions_renderer != null ? directions_renderer : google.maps.DirectionsRenderer;
+        this.directionsRenderer = directionsRenderer != null ? directionsRenderer : google.maps.DirectionsRenderer;
         /* Initializer
         */
 
         if (options !== null) {
-          this.set_options(options);
+          this.setOptions(options);
         }
-        this.set_newobj(new this.directions_renderer(this.options));
-        this.set_panel(this.panel_name);
+        this.setNewobj(new this.directionsRenderer(this.options));
+        this.setPanel(this.panelName);
       }
 
-      DirectionsRenderer.prototype.set_map = function(map) {
-        /* Set map object
+      DirectionsRenderer.prototype.setMap = function(map) {
+        /* Set map object.
         */
-        return this.get_newobj().setMap(map);
+        return this.getNewobj().setMap(map);
       };
 
-      DirectionsRenderer.prototype.set_panel = function(panel_name) {
-        if (panel_name == null) {
-          panel_name = this.panel_name;
+      DirectionsRenderer.prototype.setPanel = function(panelName) {
+        if (panelName == null) {
+          panelName = this.panelName;
         }
-        /* Set panel element name
+        /* Set panel by element name.
         */
 
-        return this.get_newobj().setPanel(panel_name);
+        return this.getNewobj().setPanel(panelName);
       };
 
-      DirectionsRenderer.prototype.set_directions = function(results) {
-        /* Set directionsService.route response results
+      DirectionsRenderer.prototype.setDirections = function(results) {
+        /* Set response results of directionsService.route
         */
-        return this.get_newobj().setDirections(results);
+        return this.getNewobj().setDirections(results);
       };
 
       return DirectionsRenderer;
@@ -254,23 +254,23 @@
         travelMode: google.maps.DirectionsTravelMode.DRIVING
       };
 
-      function DirectionsService(options, directions_service, status) {
+      function DirectionsService(options, directionsService, status) {
         if (options == null) {
           options = null;
         }
-        this.directions_service = directions_service != null ? directions_service : google.maps.DirectionsService;
+        this.directionsService = directionsService != null ? directionsService : google.maps.DirectionsService;
         this.status = status != null ? status : MAPSMODULE.DirectionsStatue;
         /* Initializer
         */
 
         if (options !== null) {
-          this.set_options(this.check_options(options));
+          this.setOptions(this.checkOptions(options));
         }
-        this.set_newobj(new this.directions_service());
+        this.setNewobj(new this.directionsService());
         this.status = new this.status();
       }
 
-      DirectionsService.prototype.check_options = function(options) {
+      DirectionsService.prototype.checkOptions = function(options) {
         /* Check options
         */
 
@@ -303,9 +303,9 @@
         */
 
         self = this;
-        options = this.check_options(options);
-        if (this.correspond_beta_for_transit(options)) {
-          return this.get_newobj().route(options, function(response, status) {
+        options = this.checkOptions(options);
+        if (this.correspondBetaForTransit(options)) {
+          return this.getNewobj().route(options, function(response, status) {
             var message_, st, status_;
             if (status === google.maps.DirectionsStatus.OK) {
               st = {
@@ -315,7 +315,7 @@
               };
             } else {
               status_ = "Directions Service Error: " + status;
-              message_ = "\n" + (self.status.get_message(status));
+              message_ = "\n" + (self.status.getMessage(status));
               st = {
                 status: status_,
                 message: message_,
@@ -334,10 +334,10 @@
         /* Request route
         */
 
-        return this._route(callback, this.check_options(options));
+        return this._route(callback, this.checkOptions(options));
       };
 
-      DirectionsService.prototype.correspond_beta_for_transit = function(options) {
+      DirectionsService.prototype.correspondBetaForTransit = function(options) {
         var url, w;
         if (options == null) {
           options = this.options;
@@ -346,7 +346,7 @@
         */
 
         if (this.options.travelMode === google.maps.DirectionsTravelMode.TRANSIT) {
-          if (window.confirm("交通機関は現在Beta版のため提供しているAPIが不完全です\n「OK」を選択すると引続きGoogleMaps上で検索します\n\n    https://maps.google.comで検索しますか？")) {
+          if (window.confirm("交通機関は現在Beta版のため提供しているAPIが不完全です\n「OK」を選択すると引続きGoogleMaps上で検索します\n\n    https://maps.google.comで検索しますか？\n")) {
             url = "https://maps.google.co.jp/maps?saddr=" + options.origin + "&daddr=" + options.destination + "&hl=ja&ie=UTF8&sll=35.706586,139.767723&sspn=0.040633,0.076818&ttype=now&noexp=0&noal=0&sort=def&mra=ltm&t=m&z=13&start=0";
             w = window.open();
             w.location.href = url;
@@ -373,38 +373,38 @@
         /* Initializer
         */
 
-        this.set_newobj(new this.geocoder());
+        this.setNewobj(new this.geocoder());
       }
 
-      Geocorder.prototype.address_to_latlng = function(address, callback) {
+      Geocorder.prototype.addressToLatlng = function(address, callback) {
         /* Convert from address to latlng
         */
 
         var _this = this;
-        return this.get_newobj().geocode({
+        return this.getNewobj().geocode({
           'address': address
         }, function(results, status) {
           var m;
-          _this.set_results(results);
+          _this.setResults(results);
           m = status === _this.status.OK ? "ok" : "Geocode was not successful for the following reason: " + status;
           return callback(results, status, m);
         });
       };
 
-      Geocorder.prototype.set_results = function(results) {
+      Geocorder.prototype.setResults = function(results) {
         return this.results = results;
-        /* Set Geocorder result
+        /* Set result of Geocoder to this object
         */
 
       };
 
-      Geocorder.prototype.get_results = function() {
+      Geocorder.prototype.getResults = function() {
         /* Result all
         */
         return this.results;
       };
 
-      Geocorder.prototype.get_current_location = function() {
+      Geocorder.prototype.getCurrentLocation = function() {
         /* Current location
         */
         return this.results[0].geometry.location;
@@ -433,16 +433,16 @@
         if (options == null) {
           options = null;
         }
-        this.geolocation = geolocation != null ? geolocation : this.get_geo();
+        this.geolocation = geolocation != null ? geolocation : this.getGeo();
         /* Initializer
         */
 
         if (options !== null) {
-          this.set_options(options);
+          this.setOptions(options);
         }
       }
 
-      Geolocation.prototype.check_geo = function() {
+      Geolocation.prototype.checkGeo = function() {
         /* Checker
         */
         if (navigator.geolocation) {
@@ -452,44 +452,48 @@
         }
       };
 
-      Geolocation.prototype.get_result = function() {
+      Geolocation.prototype.getResult = function() {
         /*
         */
         return this.result;
       };
 
-      Geolocation.prototype.set_result = function(result) {
+      Geolocation.prototype.setResult = function(result) {
         return this.result = result;
         /*
         */
 
       };
 
-      Geolocation.prototype.get_geo = function() {
+      Geolocation.prototype.getGeo = function() {
         /* Getter
         */
-        if (this.check_geo()) {
+        if (this.checkGeo()) {
           return navigator.geolocation;
         } else {
           return null;
         }
       };
 
-      Geolocation.prototype.get_current_location = function(callback) {
+      Geolocation.prototype.getCurrentLocation = function(callback) {
         /* Using watchPosition api.
         
         @param {Function} callback
+        
+        .. note ::
+        
+            Using watchPosition api.
         */
 
-        var WAIT, calcs, self, watch_id;
-        if (this.check_geo() === false) {
-          console.log("[Geolocation.get_current_location] Location error: Disabled navigator.geolocation.");
+        var WAIT, calcs, self, watchId;
+        if (this.checkGeo() === false) {
+          console.log("[Geolocation.getCurrentLocation] Location error: Disabled navigator.geolocation.");
           return false;
         }
         self = this;
         calcs = [];
         WAIT = 5000;
-        watch_id = this.get_geo().watchPosition(function(position) {
+        watchId = this.getGeo().watchPosition(function(position) {
           return calcs.push({
             success: position
           });
@@ -497,17 +501,20 @@
           return calcs.push({
             error: error
           });
-        }, this.get_options());
+        }, this.getOptions());
         return setTimeout(function() {
           var r;
-          self.get_geo().clearWatch(watch_id);
-          r = self.calc_location(calcs);
+          self.getGeo().clearWatch(watchId);
+          r = self.calcLocation(calcs);
           return callback(r, r.status);
         }, WAIT);
       };
 
-      Geolocation.prototype.calc_location = function(calcs) {
-        /* Calc
+      Geolocation.prototype.calcLocation = function(calcs) {
+        /* Calculate position object
+        
+        @param {Array<Object>} calcs
+        @return {Object}
         */
 
         var calc, r, _i, _len;
@@ -532,7 +539,7 @@
             };
           }
         }
-        this.set_result(r);
+        this.setResult(r);
         return r;
       };
 
@@ -563,10 +570,10 @@
         /* Initializer
         */
 
-        this.set_newobj(this.get_new());
+        this.setNewobj(this.getNew());
       }
 
-      Marker.prototype.get_new = function(options) {
+      Marker.prototype.getNew = function(options) {
         if (options == null) {
           options = this.options;
         }
@@ -590,14 +597,14 @@
       InfoWindow.prototype.el = null;
 
       InfoWindow.prototype.options = {
-        el_name: '#info_window',
+        elName: '#info_window',
         map: null,
         marker: null,
         title: null,
         body: null
       };
 
-      InfoWindow.prototype.default_template = "<div class=\"\">\n  <div class=\"modal-header modal-header-wrapper\">\n    <h3>{title}</h3>\n  </div>\n  <div class=\"modal-body\">\n    <span>{body}</span>\n  </div>\n</div>";
+      InfoWindow.prototype.defaultTemplate = "<div class=\"\">\n  <div class=\"modal-header modal-header-wrapper\">\n    <h3>{title}</h3>\n  </div>\n  <div class=\"modal-body\">\n    <span>{body}</span>\n  </div>\n</div>";
 
       function InfoWindow(options, infowindow) {
         if (options == null) {
@@ -607,40 +614,40 @@
         /* Initializer
         */
 
-        this.el = options.el_name ? $(options.el_name) : $('');
+        this.el = options.elName ? $(options.elName) : $('');
         if (options !== null) {
-          this.set_options(options);
+          this.setOptions(options);
         }
-        this.set_newobj(this.get_new());
+        this.setNewobj(this.getNew());
       }
 
-      InfoWindow.prototype.get_new = function() {
+      InfoWindow.prototype.getNew = function() {
         /* Get new object
         */
         return new this.infowindow();
       };
 
-      InfoWindow.prototype.get_content = function(title, body) {
+      InfoWindow.prototype.getContent = function(title, body) {
         /*
         */
 
         var newinfo;
-        newinfo = this.get_newobj() || this.get_new();
-        newinfo.setContent(this.render_template(title, body));
+        newinfo = this.getNewobj() || this.getNew();
+        newinfo.setContent(this.renderTemplate(title, body));
         return newinfo;
       };
 
-      InfoWindow.prototype.get_template = function() {
-        /* Get default template or Element
+      InfoWindow.prototype.getTemplate = function() {
+        /* Get default template or specific element
         */
         if (this.el.is('*')) {
           return this.el.html();
         } else {
-          return this.default_template;
+          return this.defaultTemplate;
         }
       };
 
-      InfoWindow.prototype.render_template = function(title, body) {
+      InfoWindow.prototype.renderTemplate = function(title, body) {
         var t, _ref, _ref1;
         if (title == null) {
           title = null;
@@ -651,7 +658,7 @@
         /*
         */
 
-        t = this.get_template();
+        t = this.getTemplate();
         t = t.replace('{title}', title || ((_ref = this.options) != null ? _ref.title : void 0));
         t = t.replace('{body}', body || ((_ref1 = this.options) != null ? _ref1.body : void 0));
         return t;
@@ -668,7 +675,7 @@
         /* Open info window
         */
 
-        info = this.get_content(title, body);
+        info = this.getContent(title, body);
         info.open(map, marker);
         return info;
       };
@@ -705,8 +712,8 @@
         }
       };
 
-      function Map(el_name, options, map) {
-        this.el_name = el_name != null ? el_name : '#googlemaps';
+      function Map(elName, options, map) {
+        this.elName = elName != null ? elName : '#googlemaps';
         if (options == null) {
           options = null;
         }
@@ -714,43 +721,43 @@
         /* Initializer
         */
 
-        this.el = $(this.el_name);
+        this.el = $(this.elName);
         if (options !== null) {
-          this.set_options(options);
+          this.setOptions(options);
         }
-        this.set_newobj(this.get_new());
-        this.check_options();
+        this.setNewobj(this.getNew());
+        this.checkOptions();
       }
 
-      Map.prototype.check_options = function() {
+      Map.prototype.checkOptions = function() {
         /* Checking option
         */
         if (!this.options.center) {
-          console.log("[MAP.check_options] Option error: options.center is " + this.options.center);
+          console.log("[MAP.checkOptions] Option error: options.center is " + this.options.center);
         }
         if (!this.options.zoom) {
-          return console.log("[MAP.check_options] Option error: options.zoom is " + this.options.zoom);
+          return console.log("[MAP.checkOptions] Option error: options.zoom is " + this.options.zoom);
         }
       };
 
-      Map.prototype.get_newobj = function() {
+      Map.prototype.getNewobj = function() {
         /* Get newobj
         */
-        this.check_options();
+        this.checkOptions();
         return this.newobj;
       };
 
-      Map.prototype.set_center = function(latlng) {
+      Map.prototype.setCenter = function(latlng) {
         /* Google latlng object
         */
-        this.set_options({
+        this.setOptions({
           center: latlng
         });
-        this.get_newobj().setCenter(latlng);
-        return this.check_options();
+        this.getNewobj().setCenter(latlng);
+        return this.checkOptions();
       };
 
-      Map.prototype.get_new = function(el, options) {
+      Map.prototype.getNew = function(el, options) {
         if (el == null) {
           el = this.el;
         }
@@ -763,25 +770,25 @@
         return new this.map(el.get(0), options);
       };
 
-      Map.prototype.get_address = function() {
+      Map.prototype.getAddress = function() {
         /* Address
         */
         return this.el.attr('address');
       };
 
-      Map.prototype.get_title = function() {
+      Map.prototype.getTitle = function() {
         /* Title
         */
         return this.el.attr('title');
       };
 
-      Map.prototype.get_body = function() {
+      Map.prototype.getBody = function() {
         /* Title
         */
         return this.el.attr('body');
       };
 
-      Map.prototype.get_content = function() {
+      Map.prototype.getContent = function() {
         /* Content
         */
         return this.el.attr('content');
@@ -804,15 +811,15 @@
 
       RouteInfoPanel.prototype.el = null;
 
-      function RouteInfoPanel(el_name) {
-        this.el_name = el_name != null ? el_name : '#info_panel';
+      function RouteInfoPanel(elName) {
+        this.elName = elName != null ? elName : '#info_panel';
         /* Initializer
         */
 
-        this.el = $(this.el_name);
+        this.el = $(this.elName);
       }
 
-      RouteInfoPanel.prototype.set_total_distance = function(results, object) {
+      RouteInfoPanel.prototype.setTotalDistance = function(results, object) {
         /* Set total distance
         */
 
@@ -827,7 +834,7 @@
             data += "" + (this.compute(overview_path.lng())) + "," + (this.compute(overview_path.lat())) + "\n";
           }
         }
-        return this.set_value(data);
+        return this.setValue(data);
       };
 
       return RouteInfoPanel;
@@ -855,13 +862,13 @@
         total: '#total'
       };
 
-      function RouteDirectionsPanel(el_name, options) {
-        this.el_name = el_name != null ? el_name : '#directions_panel';
+      function RouteDirectionsPanel(elName, options) {
+        this.elName = elName != null ? elName : '#directions_panel';
         if (options == null) {
           options = null;
         }
         /* Initializer
-        @param {String} el_name - Top element name.
+        @param {String} elName - Top element name.
         @param {Object} options - options.
         
         .. Options, e.g. ::
@@ -870,10 +877,10 @@
               total: '#total'
         */
 
-        this.el = $(this.el_name);
+        this.el = $(this.elName);
       }
 
-      RouteDirectionsPanel.prototype.set_total_distance = function(results, object) {
+      RouteDirectionsPanel.prototype.setTotalDistance = function(results, object) {
         /* Set total distance
         */
 
@@ -958,19 +965,21 @@
         }
       };
 
-      function RouteControlPanel(el_name, options) {
-        this.el_name = el_name != null ? el_name : '#control_panel';
+      function RouteControlPanel(elName, options) {
+        this.elName = elName != null ? elName : '#control_panel';
         if (options == null) {
           options = null;
         }
-        this.on_route = __bind(this.on_route, this);
+        this.onRoute = __bind(this.onRoute, this);
 
-        this.on_clearaddr = __bind(this.on_clearaddr, this);
+        this.onClearaddr = __bind(this.onClearaddr, this);
 
-        this.show_error = __bind(this.show_error, this);
+        this.hideError = __bind(this.hideError, this);
+
+        this.showError = __bind(this.showError, this);
 
         /* Initializer
-        @param {String} el_name - Top element name.
+        @param {String} elName - Top element name.
         @param {Object} options - Contoller options.
         
         .. Options, e.g. ::
@@ -1021,35 +1030,35 @@
                     dblclick: (event, cls) -> # TODO: Multiple event, Not implemention.
         */
 
-        this.el = $(this.el_name);
-        this.set_selectors(options || this.options);
+        this.el = $(this.elName);
+        this.setSelectors(options || this.options);
         if (this.options.focus.value === true) {
-          this.push_value();
+          this.pushValue();
         }
         if (this.options.focus.input === true) {
-          this.focus_input();
+          this.focusInput();
         }
-        this.tab_panel();
+        this.tabPanel();
       }
 
-      RouteControlPanel.prototype.tab_panel = function() {
-        /* On map tab panel
+      RouteControlPanel.prototype.tabPanel = function() {
+        /* Event listener
         */
 
         var op, self;
         self = this;
-        op = this.get_options();
+        op = this.getOptions();
         $(op.tab.show).on('click', function() {
           $(op.tab.show).addClass("hide");
-          return $(self.el_name).removeClass("hide");
+          return $(self.elName).removeClass("hide");
         });
         return $(op.tab.hide).on('click', function() {
-          $(self.el_name).addClass("hide");
+          $(self.elName).addClass("hide");
           return $(op.tab.show).removeClass("hide");
         });
       };
 
-      RouteControlPanel.prototype.set_selectors = function(selectors) {
+      RouteControlPanel.prototype.setSelectors = function(selectors) {
         /* Controller selectors
         */
 
@@ -1065,13 +1074,13 @@
         return way.point;
       };
 
-      RouteControlPanel.prototype.generate_html = function(selectors) {
+      RouteControlPanel.prototype.generateHtml = function(selectors) {
         /* Generate control panel
         */
 
       };
 
-      RouteControlPanel.prototype.get_selector = function(key) {
+      RouteControlPanel.prototype.getSelector = function(key) {
         var i, op, _i, _len, _ref;
         op = this.options;
         _ref = key.split(".");
@@ -1082,102 +1091,102 @@
         return op;
       };
 
-      RouteControlPanel.prototype.get_element = function(key) {
+      RouteControlPanel.prototype.getElement = function(key) {
         /*
         */
-        return $(this.get_selector(key));
+        return $(this.getSelector(key));
       };
 
-      RouteControlPanel.prototype.set_value = function(key, value) {
+      RouteControlPanel.prototype.setValue = function(key, value) {
         /* Set value to a panel
         */
-        return RouteControlPanel.__super__.set_value.call(this, value, this.get_element(key));
+        return RouteControlPanel.__super__.setValue.call(this, value, this.getElement(key));
       };
 
-      RouteControlPanel.prototype.get_value = function(key) {
+      RouteControlPanel.prototype.getValue = function(key) {
         /* Get value of a panel
         */
-        return RouteControlPanel.__super__.get_value.call(this, this.get_element(key));
+        return RouteControlPanel.__super__.getValue.call(this, this.getElement(key));
       };
 
-      RouteControlPanel.prototype.set_value_tostart = function(value) {
+      RouteControlPanel.prototype.setValueTostart = function(value) {
         /*
         */
-        return this.set_value('start.point', value);
+        return this.setValue('start.point', value);
       };
 
-      RouteControlPanel.prototype.set_value_toend = function(value) {
+      RouteControlPanel.prototype.setValueToend = function(value) {
         /*
         */
-        return this.set_value('end.point', value);
+        return this.setValue('end.point', value);
       };
 
-      RouteControlPanel.prototype.set_value_toway = function(value) {
+      RouteControlPanel.prototype.setValueToway = function(value) {
         /*
         */
-        return this.set_value('way.point', "" + (this.get_value('way.point')) + value + "\n");
+        return this.setValue('way.point', "" + (this.getValue('way.point')) + value + "\n");
       };
 
-      RouteControlPanel.prototype.set_point = function(latlng, object) {
+      RouteControlPanel.prototype.setPoint = function(latlng, object) {
         if (object == null) {
           object = null;
         }
         /* Set latLng to dom and next focus.
         */
 
-        if (this.is_checked('start.checked')) {
-          this.set_value_tostart(latlng);
-          return this.next_focus('start.point');
-        } else if (this.is_checked('end.checked')) {
-          this.set_value_toend(latlng);
-          return this.next_focus('end.point');
-        } else if (this.is_checked('way.checked')) {
-          this.set_value_toway(latlng);
-          return this.scroll_bottom('way.point');
+        if (this.isChecked('start.checked')) {
+          this.setValueTostart(latlng);
+          return this.nextFocus('start.point');
+        } else if (this.isChecked('end.checked')) {
+          this.setValueToend(latlng);
+          return this.nextFocus('end.point');
+        } else if (this.isChecked('way.checked')) {
+          this.setValueToway(latlng);
+          return this.scrollBottom('way.point');
         } else {
-          return console.log('[RouteControlPanel.set_point] Not checked error.');
+          return console.log('[RouteControlPanel.setPoint] Not checked error.');
         }
       };
 
-      RouteControlPanel.prototype.is_checked = function(key) {
+      RouteControlPanel.prototype.isChecked = function(key) {
         /* Check push value element
         */
 
         var elm;
-        elm = this.get_element(key);
+        elm = this.getElement(key);
         if (elm.attr('checked')) {
           return true;
-        } else if (this._push_value_el === null) {
+        } else if (this._pushValueEl === null) {
           return false;
-        } else if (this._push_value_el.is(elm)) {
+        } else if (this._pushValueEl.is(elm)) {
           return true;
         } else {
           return false;
         }
       };
 
-      RouteControlPanel.prototype.scroll_bottom = function(key) {
+      RouteControlPanel.prototype.scrollBottom = function(key) {
         /* Scroller
         */
 
         var w;
-        w = this.get_element(key);
+        w = this.getElement(key);
         return w.scrollTop(w.prop('scrollHeight'));
       };
 
-      RouteControlPanel.prototype.show_direct_tab = function() {
+      RouteControlPanel.prototype.showDirectTab = function() {
         /* Show tabs
         */
-        return this.show_tab(this.options.tab.direct);
+        return this.showTab(this.options.tab.direct);
       };
 
-      RouteControlPanel.prototype.show_control_tab = function() {
+      RouteControlPanel.prototype.showControlTab = function() {
         /* Show tabs
         */
-        return this.show_tab(this.options.tab.control);
+        return this.showTab(this.options.tab.control);
       };
 
-      RouteControlPanel.prototype.show_tab = function(anchor) {
+      RouteControlPanel.prototype.showTab = function(anchor) {
         /* Show tabs
         */
 
@@ -1191,63 +1200,63 @@
       */
 
 
-      RouteControlPanel.prototype._push_value_el = null;
+      RouteControlPanel.prototype._pushValueEl = null;
 
-      RouteControlPanel.prototype.next_focus = function(key) {
+      RouteControlPanel.prototype.nextFocus = function(key) {
         /* Next focus for input text
         */
 
         var self;
         self = this;
         if (this.options.focus.next) {
-          this.get_element(key === "start.point" ? "end.checked" : key === "end.point" ? "way.checked" : void 0).attr('checked', true);
-          return this.get_element(key === "start.point" ? "end.point" : key === "end.point" ? "way.point" : void 0).focus(function() {
-            return self._push_value_el = $(this);
+          this.getElement(key === "start.point" ? "end.checked" : key === "end.point" ? "way.checked" : void 0).attr('checked', true);
+          return this.getElement(key === "start.point" ? "end.point" : key === "end.point" ? "way.point" : void 0).focus(function() {
+            return self._pushValueEl = $(this);
           });
         }
       };
 
-      RouteControlPanel.prototype.push_value = function() {
+      RouteControlPanel.prototype.pushValue = function() {
         /* Set current focus
         */
 
         var self;
         self = this;
-        this.get_element('start.point').focus(function() {
-          return self._push_value_el = $(this);
+        this.getElement('start.point').focus(function() {
+          return self._pushValueEl = $(this);
         }).blur(function() {
-          return self._push_value_el = null;
+          return self._pushValueEl = null;
         });
-        this.get_element('end.point').focus(function() {
-          return self._push_value_el = $(this);
+        this.getElement('end.point').focus(function() {
+          return self._pushValueEl = $(this);
         }).blur(function() {
-          return self._push_value_el = null;
+          return self._pushValueEl = null;
         });
-        return this.get_element('way.point').focus(function() {
-          return self._push_value_el = $(this);
+        return this.getElement('way.point').focus(function() {
+          return self._pushValueEl = $(this);
         }).blur(function() {
-          return self._push_value_el = null;
+          return self._pushValueEl = null;
         });
       };
 
-      RouteControlPanel.prototype.focus_input = function() {
+      RouteControlPanel.prototype.focusInput = function() {
         /* Set current focus
         */
 
         var self;
         self = this;
-        this.get_element('start.point').focus(function() {
-          return self.get_element('start.checked').attr('checked', true);
+        this.getElement('start.point').focus(function() {
+          return self.getElement('start.checked').attr('checked', true);
         });
-        this.get_element('end.point').focus(function() {
-          return self.get_element('end.checked').attr('checked', true);
+        this.getElement('end.point').focus(function() {
+          return self.getElement('end.checked').attr('checked', true);
         });
-        return this.get_element('way.point').focus(function() {
-          return self.get_element('way.checked').attr('checked', true);
+        return this.getElement('way.point').focus(function() {
+          return self.getElement('way.checked').attr('checked', true);
         });
       };
 
-      RouteControlPanel.prototype._get_objkey = function(object) {
+      RouteControlPanel.prototype._getObjkey = function(object) {
         /* For one object
         */
 
@@ -1263,7 +1272,7 @@
         })())[0];
       };
 
-      RouteControlPanel.prototype._get_objvalue = function(object) {
+      RouteControlPanel.prototype._getObjvalue = function(object) {
         /* For one object
         */
 
@@ -1292,7 +1301,7 @@
         }, object.method);
       };
 
-      RouteControlPanel.prototype.add_route_event = function(callback) {
+      RouteControlPanel.prototype.addRouteEvent = function(callback) {
         /* Add events listener
         */
 
@@ -1301,7 +1310,7 @@
           return this.on({
             id: this.options.event.route,
             event: 'click',
-            method: this.on_route,
+            method: this.onRoute,
             callback: {
               main: callback,
               user: null
@@ -1311,17 +1320,17 @@
           route = this.options.event.route;
           return this.on({
             id: route.id,
-            event: this._get_objkey(route.event),
-            method: this.on_route,
+            event: this._getObjkey(route.event),
+            method: this.onRoute,
             callback: {
               main: callback,
-              user: this._get_objvalue(route.event)
+              user: this._getObjvalue(route.event)
             }
           });
         }
       };
 
-      RouteControlPanel.prototype.add_clearaddr_event = function(callback) {
+      RouteControlPanel.prototype.addClearaddrEvent = function(callback) {
         /* Add events listener
         */
 
@@ -1330,7 +1339,7 @@
           return this.on({
             id: this.options.event.clearaddr,
             event: 'click',
-            method: this.on_clearaddr,
+            method: this.onClearaddr,
             callback: {
               main: callback,
               user: null
@@ -1340,28 +1349,28 @@
           clearaddr = this.options.event.clearaddr;
           return this.on({
             id: clearaddr.id,
-            event: this._get_objkey(clearaddr.event),
-            method: this.on_clearaddr,
+            event: this._getObjkey(clearaddr.event),
+            method: this.onClearaddr,
             callback: {
               main: callback,
-              user: this._get_objvalue(clearaddr.event)
+              user: this._getObjvalue(clearaddr.event)
             }
           });
         }
       };
 
-      RouteControlPanel.prototype.get_travelmode = function() {
+      RouteControlPanel.prototype.getTravelmode = function() {
         /* Get travelmode
         */
-        return this.get_element('travelmode.group').find('.active').val();
+        return this.getElement('travelmode.group').find('.active').val();
       };
 
-      RouteControlPanel.prototype.show_error = function(message, status) {
+      RouteControlPanel.prototype.showError = function(message, status) {
         /* Show message
         */
 
         var alt;
-        alt = this.get_element('erralert');
+        alt = this.getElement('erralert');
         alt.find('strong').text(status);
         alt.find('span').text(message);
         alt.show();
@@ -1370,35 +1379,46 @@
         });
       };
 
-      RouteControlPanel.prototype.on_clearaddr = function(event) {
+      RouteControlPanel.prototype.hideError = function() {
+        /* Hide message
+        */
+
+        var alt;
+        alt = this.getElement('erralert');
+        alt.find('strong').text('');
+        alt.find('span').text('');
+        return alt.hide();
+      };
+
+      RouteControlPanel.prototype.onClearaddr = function(event) {
         /* Clear form
         */
 
         var _ref, _ref1;
-        this.set_value('start.point', '');
-        this.set_value('end.point', '');
-        this.set_value('way.point', '');
-        this.get_element('start.checked').attr('checked', true);
-        this.get_element('way.nonhighway').attr('checked', false);
-        this.get_element('way.nontollway').attr('checked', false);
+        this.setValue('start.point', '');
+        this.setValue('end.point', '');
+        this.setValue('way.point', '');
+        this.getElement('start.checked').attr('checked', true);
+        this.getElement('way.nonhighway').attr('checked', false);
+        this.getElement('way.nontollway').attr('checked', false);
         if ((_ref = event.data) != null) {
           _ref.usercallback(event, this);
         }
         return (_ref1 = event.data) != null ? _ref1.maincallback(event, this) : void 0;
       };
 
-      RouteControlPanel.prototype.on_route = function(event) {
+      RouteControlPanel.prototype.onRoute = function(event) {
         /* Route search request
         */
 
         var end, hw, mode, start, toll, wats, waypts, _i, _len, _ref, _ref1, _ref2;
-        start = this.get_value('start.point');
-        end = this.get_value('end.point');
-        hw = this.get_element("way.nonhighway").attr('checked') ? true : false;
-        toll = this.get_element("way.nontollway").attr('checked') ? true : false;
-        mode = this.get_travelmode();
+        start = this.getValue('start.point');
+        end = this.getValue('end.point');
+        hw = this.getElement("way.nonhighway").attr('checked') ? true : false;
+        toll = this.getElement("way.nontollway").attr('checked') ? true : false;
+        mode = this.getTravelmode();
         waypts = [];
-        _ref = this.get_value("way.point").split("\n");
+        _ref = this.getValue("way.point").split("\n");
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           wats = _ref[_i];
           if (wats !== '') {
@@ -1408,7 +1428,7 @@
             });
           }
         }
-        event.data.control_panel = {
+        event.data.controlPanel = {
           options: {
             start: start,
             end: end,
@@ -1439,31 +1459,31 @@
       */
 
 
-      RenderRouteMap.prototype.control_panel = MAPSMODULE.RouteControlPanel;
+      RenderRouteMap.prototype.controlPanel = MAPSMODULE.RouteControlPanel;
 
       /* Result panel
       */
 
 
-      RenderRouteMap.prototype.direct_panel = MAPSMODULE.RouteDirectionsPanel;
+      RenderRouteMap.prototype.directPanel = MAPSMODULE.RouteDirectionsPanel;
 
       /* Info panel
       */
 
 
-      RenderRouteMap.prototype.info_panel = MAPSMODULE.RouteInfoPanel;
+      RenderRouteMap.prototype.infoPanel = MAPSMODULE.RouteInfoPanel;
 
       /* Direction Renderer object
       */
 
 
-      RenderRouteMap.prototype.direct_render = MAPSMODULE.DirectionsRenderer;
+      RenderRouteMap.prototype.directRender = MAPSMODULE.DirectionsRenderer;
 
       /* Direction Service object
       */
 
 
-      RenderRouteMap.prototype.direct_service = MAPSMODULE.DirectionsService;
+      RenderRouteMap.prototype.directService = MAPSMODULE.DirectionsService;
 
       /* Map object
       */
@@ -1512,19 +1532,19 @@
         .. Options, e.g. ::
         
             options =
-              direct_panel:
+              directPanel:
                 obj: new RouteDirectionsPanel("#directions_panel")
                 name: '#directions_panel'
                 options: null
-              control_panel:
+              controlPanel:
                 obj: new RouteControlPanel("#control_panel")
                 name: '#direct_panel'
                 options: {}
-              info_panel:
+              infoPanel:
                 obj: new RouteInfoPanel("#info_panel")
                 name: '#info_panel'
                 options: {}
-              direct_render:
+              directRender:
                 obj: new DirectionsRenderer('#renderer')
                 name: '#renderer'
                 options: {}
@@ -1534,25 +1554,25 @@
                 options: {}
         */
 
-        this.set_option_class(options, 'direct_panel');
-        this.set_option_class(options, 'control_panel');
-        this.set_option_class(options, 'info_panel');
-        this.set_option_class(options, 'direct_render');
-        this.set_option_class(options, 'map');
-        this.set_option_class(options, 'geocorder');
-        this.set_option_class(options, 'geolocation');
+        this.setOptionClass(options, 'directPanel');
+        this.setOptionClass(options, 'controlPanel');
+        this.setOptionClass(options, 'infoPanel');
+        this.setOptionClass(options, 'directRender');
+        this.setOptionClass(options, 'map');
+        this.setOptionClass(options, 'geocorder');
+        this.setOptionClass(options, 'geolocation');
         this.place = options != null ? options.place : void 0;
       }
 
-      RenderRouteMap.prototype.set_option_class = function(options, key) {
-        /* Set class to attribute
+      RenderRouteMap.prototype.setOptionClass = function(options, key) {
+        /* Set class to property
         */
 
-        var name, objs, objs_obj, v;
+        var name, objs, objsObj, v;
         objs = options != null ? options[key] : void 0;
-        objs_obj = (objs != null ? objs.obj : void 0) || null;
-        if (objs_obj !== null) {
-          return this[key] = objs_obj;
+        objsObj = (objs != null ? objs.obj : void 0) || null;
+        if (objsObj !== null) {
+          return this[key] = objsObj;
         } else {
           name = (objs != null ? objs.name : void 0) || null;
           if (name === null) {
@@ -1569,24 +1589,24 @@
         }
       };
 
-      RenderRouteMap.prototype.get_latlng = function(place, callback) {
+      RenderRouteMap.prototype.getLatlng = function(place, callback) {
         if (place == null) {
           place = this.place;
         }
         /* Get latlng
         */
 
-        return this.geocorder.address_to_latlng(place || this.map.get_address(), function(results, status, message) {
+        return this.geocorder.addressToLatlng(place || this.map.getAddress(), function(results, status, message) {
           return callback(results, status, message);
         });
       };
 
-      RenderRouteMap.prototype.get_marker = function(latlng, title, map) {
+      RenderRouteMap.prototype.getMarker = function(latlng, title, map) {
         if (title == null) {
-          title = this.map.get_title();
+          title = this.map.getTitle();
         }
         if (map == null) {
-          map = this.map.get_newobj();
+          map = this.map.getNewobj();
         }
         /* Get marker object
         */
@@ -1598,17 +1618,17 @@
         });
       };
 
-      RenderRouteMap.prototype.get_infowindow = function(marker, title, map) {
+      RenderRouteMap.prototype.getInfowindow = function(marker, title, map) {
         if (title == null) {
-          title = this.map.get_title();
+          title = this.map.getTitle();
         }
         if (map == null) {
-          map = this.map.get_newobj();
+          map = this.map.getNewobj();
         }
         /* Open info window
         */
 
-        marker = (marker != null ? marker.get_newobj() : void 0) || marker;
+        marker = (marker != null ? marker.getNewobj() : void 0) || marker;
         return new this.infowindow({
           marker: marker,
           map: map,
@@ -1616,43 +1636,43 @@
         });
       };
 
-      RenderRouteMap.prototype.open_infowindow = function(marker, title, body) {
+      RenderRouteMap.prototype.openInfowindow = function(marker, title, body) {
         var infowindow;
         if (title == null) {
-          title = this.map.get_title();
+          title = this.map.getTitle();
         }
         if (body == null) {
-          body = this.map.get_body();
+          body = this.map.getBody();
         }
         /*
         */
 
-        infowindow = this.get_infowindow(marker);
+        infowindow = this.getInfowindow(marker);
         infowindow.open(title, body);
         return infowindow;
       };
 
-      RenderRouteMap.prototype.set_map = function(map) {
+      RenderRouteMap.prototype.setMap = function(map) {
         if (map == null) {
-          map = this.map.get_newobj();
+          map = this.map.getNewobj();
         }
         /* Set map
         */
 
-        return this.direct_render.set_map(map);
+        return this.directRender.setMap(map);
       };
 
-      RenderRouteMap.prototype.set_direct_panel = function(direct_panel_el) {
-        if (direct_panel_el == null) {
-          direct_panel_el = this.direct_panel.el;
+      RenderRouteMap.prototype.setDirectPanel = function(directPanelEl) {
+        if (directPanelEl == null) {
+          directPanelEl = this.directPanel.el;
         }
         /* Set panel
         */
 
-        if (direct_panel_el.is('*')) {
-          return this.direct_render.set_panel(direct_panel_el.get(0));
+        if (directPanelEl.is('*')) {
+          return this.directRender.setPanel(directPanelEl.get(0));
         } else {
-          return console.log("[RenderRouteMap.set_direct_panel] Arguments error: (direct_panel_el is " + direct_panel_el + ")");
+          return console.log("[RenderRouteMap.setDirectPanel] Arguments error: (directPanelEl is " + directPanelEl + ")");
         }
       };
 
@@ -1664,31 +1684,31 @@
         /* Render map
         */
 
-        return this.get_latlng(options != null ? options.place : void 0, function(results, status, message) {
+        return this.getLatlng(options != null ? options.place : void 0, function(results, status, message) {
           /* Current latlng
           */
 
           var infowindow, marker;
-          _this.map.set_center(_this.geocorder.get_current_location());
-          _this.set_map();
-          _this.set_direct_panel();
-          marker = _this.get_marker(_this.geocorder.get_current_location());
-          infowindow = _this.open_infowindow(marker);
+          _this.map.setCenter(_this.geocorder.getCurrentLocation());
+          _this.setMap();
+          _this.setDirectPanel();
+          marker = _this.getMarker(_this.geocorder.getCurrentLocation());
+          infowindow = _this.openInfowindow(marker);
           /* Event receivers
           */
 
-          _this.control_panel.add_clearaddr_event(function(event, cls) {
+          _this.controlPanel.addClearaddrEvent(function(event, cls) {
             /* On submit clear input values.
             */
 
           });
-          _this.control_panel.add_route_event(function(event, cls) {
+          _this.controlPanel.addRouteEvent(function(event, cls) {
             /* On submit route search
             */
 
             var service;
-            options = event.data.control_panel.options;
-            service = new _this.direct_service({
+            options = event.data.controlPanel.options;
+            service = new _this.directService({
               origin: options.start,
               destination: options.end,
               waypoints: options.waypts,
@@ -1701,33 +1721,34 @@
               /* Request calc route
               */
               if (status.bool) {
-                _this.control_panel.show_direct_tab();
-                _this.direct_render.set_directions(response);
-                return _this.info_panel.set_total_distance(response);
+                _this.controlPanel.showDirectTab();
+                _this.directRender.setDirections(response);
+                _this.infoPanel.setTotalDistance(response);
+                return _this.controlPanel.hideError();
               } else {
-                return _this.control_panel.show_error(status.message, status.status);
+                return _this.controlPanel.showError(status.message, status.status);
               }
             });
           });
-          _this.event.on(marker.get_newobj(), 'click', function(event) {
+          _this.event.on(marker.getNewobj(), 'click', function(event) {
             /* Mouse event receiver
             */
-            return _this.open_infowindow(marker);
+            return _this.openInfowindow(marker);
           });
-          _this.event.on(_this.map.get_newobj(), 'click', function(event) {
+          _this.event.on(_this.map.getNewobj(), 'click', function(event) {
             /* Mouse event receiver
             */
-            _this.control_panel.show_control_tab();
-            return _this.control_panel.set_point(event.latLng, _this.map.get_newobj());
+            _this.controlPanel.showControlTab();
+            return _this.controlPanel.setPoint(event.latLng, _this.map.getNewobj());
           });
-          return _this.event.on(_this.direct_render.get_newobj(), 'click', function(event) {
+          return _this.event.on(_this.directRender.getNewobj(), 'click', function(event) {
             /* Directions changed event receiver
             */
 
             var newobj;
-            newobj = _this.direct_render.get_newobj();
-            _this.direct_panel.set_total_distance(newobj.directions, newobj);
-            return _this.info_panel.set_total_distance(newobj.directions, newobj);
+            newobj = _this.directRender.getNewobj();
+            _this.directPanel.setTotalDistance(newobj.directions, newobj);
+            return _this.infoPanel.setTotalDistance(newobj.directions, newobj);
           });
         });
       };
