@@ -40,7 +40,20 @@ define ['jquery'], ($) ->
       return no
     yes
 
-  if MAPSMODULE.moduleChecker() is false then return MAPSMODULE
+  if MAPSMODULE.moduleChecker() is no then return MAPSMODULE
+
+  ### Utility ###
+  #
+  #
+  String.prototype.capitalize = ->
+    ###
+    .. e.g. ::
+
+      "hello world".capitalize();  =>  "Hello world"
+    ###
+    #
+    #
+    @charAt(0).toUpperCase() + @slice(1)
 
   class MAPSMODULE.BaseClass
     ### Common methods ###
@@ -204,9 +217,9 @@ define ['jquery'], ($) ->
       origin: ''
       destination: ''
       waypoints: ''
-      optimizeWaypoints: true
-      avoidHighways: true
-      avoidTolls: true
+      optimizeWaypoints: yes
+      avoidHighways: yes
+      avoidTolls: yes
       travelMode: google.maps.DirectionsTravelMode.DRIVING
       # transitOptions: {
         # departureTime: new Date(1337675679473)
@@ -259,14 +272,14 @@ define ['jquery'], ($) ->
         # .. TODO:: Now errorful.
         #
         #
-        console.log travelmode.BICYCLING
+        console.log "#{travelmode.BICYCLING} is beta."
 
       else if options.travelMode is travelmode.WALKING
         # WALKING
         #
         #  .. TODO:: Walkng is beta.
         #
-        console.log travelmode.WALKING
+        console.log "#{travelmode.WALKING} is beta."
 
       options
 
@@ -284,14 +297,14 @@ define ['jquery'], ($) ->
             st =
               status: status
               message: ''
-              bool: true
+              bool: yes
           else
             status_ = "Directions Service Error: #{status}"
             message_ = "\n#{self.status.getMessage status}"
             st =
               status: status_
               message: message_
-              bool: false
+              bool: no
 
           # Call
           callback response, st
@@ -311,7 +324,7 @@ define ['jquery'], ($) ->
           交通機関は現在Beta版のため提供しているAPIが不完全です
           「OK」を選択すると引続きGoogleMaps上で検索します
 
-              https://maps.google.comで検索しますか？
+          https://maps.google.comで検索しますか？
 
           """
           url ="https://maps.google.co.jp/maps?saddr=#{options.origin}&daddr=#{options.destination}&hl=ja&ie=UTF8&sll=35.706586,139.767723&sspn=0.040633,0.076818&ttype=now&noexp=0&noal=0&sort=def&mra=ltm&t=m&z=13&start=0"
@@ -337,8 +350,16 @@ define ['jquery'], ($) ->
       #
       @getNewobj().geocode {'address': address}, (results, status) =>
         @setResults results
-        m = if status is @status.OK then "ok" else "Geocode was not successful for the following reason: #{status}"
-        callback results, status, m
+        if status is @status.OK
+          message = "ok"
+        else
+          prefix = "[Geocorder.addressToLatlng] "
+          message = "Geocode was not successful for the following reason: #{status}"
+          console.log "#{prefix} #{message}"
+          console.log "#{prefix}Request error: Parameter address is `#{address}`"
+
+        # callback
+        callback results, status, message
 
     setResults: (@results) ->
       ### Set result of Geocoder to this object ###
@@ -352,11 +373,13 @@ define ['jquery'], ($) ->
       @results
 
     getCurrentLocation: ->
-      ### Current location ###
+      ### Current location  ###
       #
       #
-      @results[0].geometry.location
-
+      try
+        @results[0].geometry.location
+      catch e
+        console.log "[Geocorder.getCurrentLocation] #{e}"
 
   class MAPSMODULE.Geolocation extends MAPSMODULE.BaseClass
     ### Wrapped geo ###
@@ -367,7 +390,7 @@ define ['jquery'], ($) ->
     options:
       maximumAge: 0
       timeout: 2000
-      enableHighAccuracy: true
+      enableHighAccuracy: yes
 
     constructor: (options=null, @geolocation=@getGeo()) ->
       ### Initializer ###
@@ -381,7 +404,7 @@ define ['jquery'], ($) ->
       ### Checker ###
       #
       #
-      if navigator.geolocation then true else false
+      if navigator.geolocation then yes else no
 
     getResult: ->
       ### ###
@@ -412,13 +435,13 @@ define ['jquery'], ($) ->
         ###
         #
         #
-        if @checkGeo() is false
+        if @checkGeo() is no
           console.log "[Geolocation.getCurrentLocation] Location error: Disabled navigator.geolocation."
-          return false
+          return no
 
         self = @
         calcs = []
-        WAIT = 5000
+        WAIT = 3000
 
         # Watch
         watchId = @getGeo().watchPosition (position) ->
@@ -449,7 +472,8 @@ define ['jquery'], ($) ->
       #
       #
       r =
-        status: false
+        code: 1000
+        status: no
         coords: accuracy: 1000
 
       for calc in calcs
@@ -458,11 +482,11 @@ define ['jquery'], ($) ->
           if calc.success.coords.accuracy < r.coords.accuracy
             # Put Succes object
             r = calc.success
-            r.status = true
-        else if r.status is false
+            r.status = yes
+        else if r.status is no
           # Error re:calc
           r = calc.error
-          r.status = false
+          r.status = no
           r.coords = accuracy: 1000
 
       @setResult r
@@ -746,9 +770,9 @@ define ['jquery'], ($) ->
     #
     options:
       focus:
-        input: true
-        value: true
-        next: true
+        input: yes
+        value: yes
+        next: yes
       start:
         point: '#start_point'
         checked: '#start_checked'
@@ -761,13 +785,12 @@ define ['jquery'], ($) ->
         nontollway: '#way_nontollway'
         nonhighway: '#way_nonhighway'
       tab:
+        direct: '#tab_direct'
+        route: '#tab_route'
         show: '#tab_show'
         hide: '#tab_hide'
-        direct: '#tab_direct'
-        control: '#tab_control'
+        near: '#tab_near'
         info: '#tab_info'
-      location:
-        current: "#location_current"
       travelmode:
         group: '#travelmode-group'
         # drive:
@@ -779,6 +802,10 @@ define ['jquery'], ($) ->
         # route: '#click_route'
         # clearaddr: '#click_clearaddr'
       event:
+        current:
+          id: '.click_current'
+          event:
+            click: (event, cls) ->
         route:
           id: '#click_route'
           event:
@@ -797,9 +824,9 @@ define ['jquery'], ($) ->
 
           options:
             focus:
-              input: true
-              value: true
-              next: true
+              input: yes
+              value: yes
+              next: yes
             start:
               point: '#start_point'
               checked: '#start_checked'
@@ -813,12 +840,10 @@ define ['jquery'], ($) ->
               nonhighway: '#way_nonhighway'
             tab:
               direct: '#tab_direct'
-              control: '#tab_control'
+              route: '#tab_route'
               info: '#tab_info'
               show: '#tab_show'
               hide: '#tab_hide'
-            location:
-              current: "#location_current"
             travelmode:
               group: '#travelmode-group'
               # drive:
@@ -830,6 +855,10 @@ define ['jquery'], ($) ->
               # route: '#click_route'
               # clearaddr: '#click_clearaddr'
             event:
+              current:
+                id: '.click_current'
+                event:
+                  click: (event, cls) ->
               route:
                 id: '#click_route'
                 event:
@@ -851,10 +880,10 @@ define ['jquery'], ($) ->
       # @generateHtml
 
       # Push latlng value
-      if @options.focus.value is true then @pushValue()
+      if @options.focus.value is yes then @pushValue()
 
       # Focus input
-      if @options.focus.input is true then @focusInput()
+      if @options.focus.input is yes then @focusInput()
 
       #
       # @addEvents(callback)
@@ -967,13 +996,13 @@ define ['jquery'], ($) ->
       elm = @getElement key
 
       if elm.attr 'checked'
-        true
+        yes
       else if @_pushValueEl is null
-        false
+        no
       else if @_pushValueEl.is elm
-        true
+        yes
       else
-        false
+        no
 
     scrollBottom: (key) ->
       ### Scroller ###
@@ -991,7 +1020,7 @@ define ['jquery'], ($) ->
       ### Show tabs ###
       #
       #
-      @showTab @options.tab.control
+      @showTab @options.tab.route
 
     showTab: (anchor) ->
       ### Show tabs ###
@@ -1017,7 +1046,7 @@ define ['jquery'], ($) ->
             "end.checked"
           else if key is "end.point"
             "way.checked"
-        ).attr('checked', true)
+        ).attr('checked', yes)
         @getElement(
           if key is "start.point"
             "end.point"
@@ -1040,9 +1069,9 @@ define ['jquery'], ($) ->
       #
       #
       self = @
-      @getElement('start.point').focus -> self.getElement('start.checked').attr 'checked', true
-      @getElement('end.point').focus -> self.getElement('end.checked').attr 'checked', true
-      @getElement('way.point').focus -> self.getElement('way.checked').attr 'checked', true
+      @getElement('start.point').focus -> self.getElement('start.checked').attr 'checked', yes
+      @getElement('end.point').focus -> self.getElement('end.checked').attr 'checked', yes
+      @getElement('way.point').focus -> self.getElement('way.checked').attr 'checked', yes
 
     _getObjkey: (object) ->
       ### For one object ###
@@ -1062,51 +1091,48 @@ define ['jquery'], ($) ->
       #
       $(object.id).on object.event, {maincallback: object.callback.main, usercallback: object.callback.user}, object.method
 
+    addEvent: (key, callback, event=@options.event) ->
+      ### Common ###
+      #
+      #
+      if not event
+        @on
+          id: event[key]
+          event: 'click'
+          method: @["on#{key.capitalize()}"]
+          callback:
+            main: callback
+            user: null
+      else
+        obj = event[key]
+        @on
+          id: obj.id
+          event: @_getObjkey obj.event
+          method: @["on#{key.capitalize()}"]
+          callback:
+            main: callback
+            user: @_getObjvalue obj.event
+
+    addCurrentEvent: (callback) ->
+      ### Add events listener ###
+      #
+      # Current location event
+      #
+      @addEvent 'current', callback
+
     addRouteEvent: (callback) ->
       ### Add events listener ###
       #
       # Route event
       #
-      if not @options.event
-        @on
-          id: @options.event.route
-          event: 'click'
-          method: @onRoute
-          callback:
-            main: callback
-            user: null
-      else
-        route = @options.event.route
-        @on
-          id: route.id
-          event: @_getObjkey route.event
-          method: @onRoute
-          callback:
-            main: callback
-            user: @_getObjvalue route.event
+      @addEvent 'route', callback
 
     addClearaddrEvent: (callback) ->
       ### Add events listener ###
       #
       # ClearAddress event
       #
-      if not @options.event
-        @on
-          id: @options.event.clearaddr
-          event: 'click'
-          method: @onClearaddr
-          callback:
-            main: callback
-            user: null
-      else
-        clearaddr = @options.event.clearaddr
-        @on
-          id: clearaddr.id
-          event: @_getObjkey clearaddr.event
-          method: @onClearaddr
-          callback:
-            main: callback
-            user: @_getObjvalue clearaddr.event
+      @addEvent 'clearaddr', callback
 
     getTravelmode: ->
       ### Get travelmode ###
@@ -1134,6 +1160,30 @@ define ['jquery'], ($) ->
       alt.find('span').text ''
       alt.hide()
 
+    getCurrentElement: ->
+      ### Get element of current location button ###
+      #
+      #
+      $('.tab-pane.active').find("#{@options.event.current.id}")
+
+    onCurrent: (event) =>
+      ### Enabled navigator.geolocation ###
+      #
+      #
+      #
+      btn = @getCurrentElement()
+      boolean = if btn.hasClass("active") then no else yes
+
+      # For disabled
+      btn.parents(".controls").find('[type="text"]').attr 'disabled', boolean
+
+      # Add params
+      @_addParamsToEvent event, current: {disabled: boolean}
+
+      # Calls
+      event.data?.usercallback event, @
+      event.data?.maincallback event, @
+
     onClearaddr: (event) =>
       ### Clear form  ###
       #
@@ -1141,9 +1191,9 @@ define ['jquery'], ($) ->
       @setValue 'start.point', ''
       @setValue 'end.point', ''
       @setValue 'way.point', ''
-      @getElement('start.checked').attr 'checked', true
-      @getElement('way.nonhighway').attr 'checked', false
-      @getElement('way.nontollway').attr 'checked', false
+      @getElement('start.checked').attr 'checked', yes
+      @getElement('way.nonhighway').attr 'checked', no
+      @getElement('way.nontollway').attr 'checked', no
 
       # Calls
       event.data?.usercallback event, @
@@ -1153,29 +1203,39 @@ define ['jquery'], ($) ->
       ### Route search request ###
       #
       #
-
       # Start
-      start = @getValue 'start.point'
+      if @getCurrentElement().hasClass("active")
+        start = @getCurrentElement().val()
+      else
+        start = @getValue 'start.point'
       # End
       end = @getValue 'end.point'
       # Non highway
-      hw = if @getElement("way.nonhighway").attr 'checked' then true else false
+      hw = if @getElement("way.nonhighway").attr 'checked' then yes else no
       # Non tollway
-      toll = if @getElement("way.nontollway").attr 'checked' then true else false
+      toll = if @getElement("way.nontollway").attr 'checked' then yes else no
       # Mode
       mode = @getTravelmode()
       # Way point
       waypts = []
       for wats in @getValue("way.point").split "\n"
-        if wats != '' then waypts.push {location: wats, stopover: true}
+        if wats != '' then waypts.push {location: wats, stopover: yes}
 
       # Add parameter
-      event.data.controlPanel =
-        options: {start, end, hw, toll, mode, waypts}
+      @_addParamsToEvent event, options: {start, end, hw, toll, mode, waypts}
 
       # Calls
       event.data?.usercallback event, @
       event.data?.maincallback event, @
+
+    _addParamsToEvent: (event, params) ->
+      ### ###
+      #
+      #
+      event.data.controlPanel or= {}
+
+      for key, value of params
+        event.data.controlPanel[key] = value
 
   class MAPSMODULE.RenderRouteMap extends MAPSMODULE.BaseClass
     ### Route map class ###
@@ -1316,7 +1376,7 @@ define ['jquery'], ($) ->
         # Obj options
         name = objs?.name or null
         if name is null
-          console.log "[RenderRouteMap.constructor] Arguments error: options.#{key}.name is require. (#{key}.name is #{name})"
+          console.log "[RenderRouteMap.constructor] Arguments warning: options.#{key}.name is require. (#{key}.name is #{name})"
         @[key] = new (
           if (v for v of objs?.options).length
             (@[key] name, objs.options)
@@ -1398,6 +1458,52 @@ define ['jquery'], ($) ->
         #
         #
 
+        _setCurrentLocation = =>
+          ######
+          #
+          #
+
+          # Call navigator.geolocation
+          @geolocation.getCurrentLocation (result, status) =>
+            # Set current location
+            #
+            #
+            if status is yes
+              # Allow geolocation
+              #
+              #
+              btn = @controlPanel.getCurrentElement()
+              btn.val "(#{result.coords.latitude}, #{result.coords.longitude})"
+
+            else if result.code is 1
+              # Deny geolocation
+              #
+              #
+              console.log "[RenderRouteMap.run] Current location error: code #{result.code}, #{result.message}"
+
+              if window.confirm """
+              現在位置情報が設定により取得できなくなっています
+              現在位置を使用する場合は、設定より位置情報を許可して下さい
+
+              許可設定のヘルプを確認しますか？
+              """
+                w = window.open()
+                w.location.href = '/'
+
+            else if result.code is 1000
+              ### Tail recursion ###
+              #
+              #
+              console.log "[RenderRouteMap.run] Warning: tail recursion. #{status}#{result}"
+              _setCurrentLocation()
+
+        @controlPanel.addCurrentEvent (event, cls) =>
+          ### On submit location current . ###
+          #
+          #
+          if event.data.controlPanel.current.disabled is yes
+            _setCurrentLocation()
+
         @controlPanel.addClearaddrEvent (event, cls) =>
           ### On submit clear input values. ###
           #
@@ -1412,7 +1518,7 @@ define ['jquery'], ($) ->
             origin: options.start
             destination: options.end
             waypoints: options.waypts
-            optimizeWaypoints: true
+            optimizeWaypoints: yes
             avoidHighways: options.hw
             avoidTolls: options.toll
             travelMode: options.mode
@@ -1421,7 +1527,7 @@ define ['jquery'], ($) ->
             ### Request calc route ###
             #
             #
-            if status.bool
+            if status.bool is yes
               @controlPanel.showDirectTab()
               @directRender.setDirections response
               @infoPanel.setTotalDistance response

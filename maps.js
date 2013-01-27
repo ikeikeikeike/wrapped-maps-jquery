@@ -44,6 +44,17 @@
     if (MAPSMODULE.moduleChecker() === false) {
       return MAPSMODULE;
     }
+    /* Utility
+    */
+
+    String.prototype.capitalize = function() {
+      /*
+          .. e.g. ::
+      
+            "hello world".capitalize();  =>  "Hello world"
+      */
+      return this.charAt(0).toUpperCase() + this.slice(1);
+    };
     MAPSMODULE.BaseClass = (function() {
 
       function BaseClass() {}
@@ -287,9 +298,9 @@
           };
           options.unitSystem = google.maps.UnitSystem.IMPERIAL;
         } else if (options.travelMode === travelmode.BICYCLING) {
-          console.log(travelmode.BICYCLING);
+          console.log("" + travelmode.BICYCLING + " is beta.");
         } else if (options.travelMode === travelmode.WALKING) {
-          console.log(travelmode.WALKING);
+          console.log("" + travelmode.WALKING + " is beta.");
         }
         return options;
       };
@@ -346,7 +357,7 @@
         */
 
         if (this.options.travelMode === google.maps.DirectionsTravelMode.TRANSIT) {
-          if (window.confirm("交通機関は現在Beta版のため提供しているAPIが不完全です\n「OK」を選択すると引続きGoogleMaps上で検索します\n\n    https://maps.google.comで検索しますか？\n")) {
+          if (window.confirm("交通機関は現在Beta版のため提供しているAPIが不完全です\n「OK」を選択すると引続きGoogleMaps上で検索します\n\nhttps://maps.google.comで検索しますか？\n")) {
             url = "https://maps.google.co.jp/maps?saddr=" + options.origin + "&daddr=" + options.destination + "&hl=ja&ie=UTF8&sll=35.706586,139.767723&sspn=0.040633,0.076818&ttype=now&noexp=0&noal=0&sort=def&mra=ltm&t=m&z=13&start=0";
             w = window.open();
             w.location.href = url;
@@ -384,10 +395,17 @@
         return this.getNewobj().geocode({
           'address': address
         }, function(results, status) {
-          var m;
+          var message, prefix;
           _this.setResults(results);
-          m = status === _this.status.OK ? "ok" : "Geocode was not successful for the following reason: " + status;
-          return callback(results, status, m);
+          if (status === _this.status.OK) {
+            message = "ok";
+          } else {
+            prefix = "[Geocorder.addressToLatlng] ";
+            message = "Geocode was not successful for the following reason: " + status;
+            console.log("" + prefix + " " + message);
+            console.log("" + prefix + "Request error: Parameter address is `" + address + "`");
+          }
+          return callback(results, status, message);
         });
       };
 
@@ -407,7 +425,11 @@
       Geocorder.prototype.getCurrentLocation = function() {
         /* Current location
         */
-        return this.results[0].geometry.location;
+        try {
+          return this.results[0].geometry.location;
+        } catch (e) {
+          return console.log("[Geocorder.getCurrentLocation] " + e);
+        }
       };
 
       return Geocorder;
@@ -492,7 +514,7 @@
         }
         self = this;
         calcs = [];
-        WAIT = 5000;
+        WAIT = 3000;
         watchId = this.getGeo().watchPosition(function(position) {
           return calcs.push({
             success: position
@@ -519,6 +541,7 @@
 
         var calc, r, _i, _len;
         r = {
+          code: 1000,
           status: false,
           coords: {
             accuracy: 1000
@@ -936,20 +959,24 @@
           nonhighway: '#way_nonhighway'
         },
         tab: {
+          direct: '#tab_direct',
+          route: '#tab_route',
           show: '#tab_show',
           hide: '#tab_hide',
-          direct: '#tab_direct',
-          control: '#tab_control',
+          near: '#tab_near',
           info: '#tab_info'
-        },
-        location: {
-          current: "#location_current"
         },
         travelmode: {
           group: '#travelmode-group'
         },
         erralert: '#erralert',
         event: {
+          current: {
+            id: '.click_current',
+            event: {
+              click: function(event, cls) {}
+            }
+          },
           route: {
             id: '#click_route',
             event: {
@@ -974,6 +1001,8 @@
 
         this.onClearaddr = __bind(this.onClearaddr, this);
 
+        this.onCurrent = __bind(this.onCurrent, this);
+
         this.hideError = __bind(this.hideError, this);
 
         this.showError = __bind(this.showError, this);
@@ -986,9 +1015,9 @@
         
             options:
               focus:
-                input: true
-                value: true
-                next: true
+                input: yes
+                value: yes
+                next: yes
               start:
                 point: '#start_point'
                 checked: '#start_checked'
@@ -1002,12 +1031,10 @@
                 nonhighway: '#way_nonhighway'
               tab:
                 direct: '#tab_direct'
-                control: '#tab_control'
+                route: '#tab_route'
                 info: '#tab_info'
                 show: '#tab_show'
                 hide: '#tab_hide'
-              location:
-                current: "#location_current"
               travelmode:
                 group: '#travelmode-group'
                 # drive:
@@ -1019,6 +1046,10 @@
                 # route: '#click_route'
                 # clearaddr: '#click_clearaddr'
               event:
+                current:
+                  id: '.click_current'
+                  event:
+                    click: (event, cls) ->
                 route:
                   id: '#click_route'
                   event:
@@ -1183,7 +1214,7 @@
       RouteControlPanel.prototype.showControlTab = function() {
         /* Show tabs
         */
-        return this.showTab(this.options.tab.control);
+        return this.showTab(this.options.tab.route);
       };
 
       RouteControlPanel.prototype.showTab = function(anchor) {
@@ -1301,62 +1332,54 @@
         }, object.method);
       };
 
-      RouteControlPanel.prototype.addRouteEvent = function(callback) {
-        /* Add events listener
+      RouteControlPanel.prototype.addEvent = function(key, callback, event) {
+        var obj;
+        if (event == null) {
+          event = this.options.event;
+        }
+        /* Common
         */
 
-        var route;
-        if (!this.options.event) {
+        if (!event) {
           return this.on({
-            id: this.options.event.route,
+            id: event[key],
             event: 'click',
-            method: this.onRoute,
+            method: this["on" + (key.capitalize())],
             callback: {
               main: callback,
               user: null
             }
           });
         } else {
-          route = this.options.event.route;
+          obj = event[key];
           return this.on({
-            id: route.id,
-            event: this._getObjkey(route.event),
-            method: this.onRoute,
+            id: obj.id,
+            event: this._getObjkey(obj.event),
+            method: this["on" + (key.capitalize())],
             callback: {
               main: callback,
-              user: this._getObjvalue(route.event)
+              user: this._getObjvalue(obj.event)
             }
           });
         }
       };
 
+      RouteControlPanel.prototype.addCurrentEvent = function(callback) {
+        /* Add events listener
+        */
+        return this.addEvent('current', callback);
+      };
+
+      RouteControlPanel.prototype.addRouteEvent = function(callback) {
+        /* Add events listener
+        */
+        return this.addEvent('route', callback);
+      };
+
       RouteControlPanel.prototype.addClearaddrEvent = function(callback) {
         /* Add events listener
         */
-
-        var clearaddr;
-        if (!this.options.event) {
-          return this.on({
-            id: this.options.event.clearaddr,
-            event: 'click',
-            method: this.onClearaddr,
-            callback: {
-              main: callback,
-              user: null
-            }
-          });
-        } else {
-          clearaddr = this.options.event.clearaddr;
-          return this.on({
-            id: clearaddr.id,
-            event: this._getObjkey(clearaddr.event),
-            method: this.onClearaddr,
-            callback: {
-              main: callback,
-              user: this._getObjvalue(clearaddr.event)
-            }
-          });
-        }
+        return this.addEvent('clearaddr', callback);
       };
 
       RouteControlPanel.prototype.getTravelmode = function() {
@@ -1390,6 +1413,31 @@
         return alt.hide();
       };
 
+      RouteControlPanel.prototype.getCurrentElement = function() {
+        /* Get element of current location button
+        */
+        return $('.tab-pane.active').find("" + this.options.event.current.id);
+      };
+
+      RouteControlPanel.prototype.onCurrent = function(event) {
+        /* Enabled navigator.geolocation
+        */
+
+        var boolean, btn, _ref, _ref1;
+        btn = this.getCurrentElement();
+        boolean = btn.hasClass("active") ? false : true;
+        btn.parents(".controls").find('[type="text"]').attr('disabled', boolean);
+        this._addParamsToEvent(event, {
+          current: {
+            disabled: boolean
+          }
+        });
+        if ((_ref = event.data) != null) {
+          _ref.usercallback(event, this);
+        }
+        return (_ref1 = event.data) != null ? _ref1.maincallback(event, this) : void 0;
+      };
+
       RouteControlPanel.prototype.onClearaddr = function(event) {
         /* Clear form
         */
@@ -1412,7 +1460,11 @@
         */
 
         var end, hw, mode, start, toll, wats, waypts, _i, _len, _ref, _ref1, _ref2;
-        start = this.getValue('start.point');
+        if (this.getCurrentElement().hasClass("active")) {
+          start = this.getCurrentElement().val();
+        } else {
+          start = this.getValue('start.point');
+        }
         end = this.getValue('end.point');
         hw = this.getElement("way.nonhighway").attr('checked') ? true : false;
         toll = this.getElement("way.nontollway").attr('checked') ? true : false;
@@ -1428,7 +1480,7 @@
             });
           }
         }
-        event.data.controlPanel = {
+        this._addParamsToEvent(event, {
           options: {
             start: start,
             end: end,
@@ -1437,11 +1489,25 @@
             mode: mode,
             waypts: waypts
           }
-        };
+        });
         if ((_ref1 = event.data) != null) {
           _ref1.usercallback(event, this);
         }
         return (_ref2 = event.data) != null ? _ref2.maincallback(event, this) : void 0;
+      };
+
+      RouteControlPanel.prototype._addParamsToEvent = function(event, params) {
+        /*
+        */
+
+        var key, value, _base, _results;
+        (_base = event.data).controlPanel || (_base.controlPanel = {});
+        _results = [];
+        for (key in params) {
+          value = params[key];
+          _results.push(event.data.controlPanel[key] = value);
+        }
+        return _results;
       };
 
       return RouteControlPanel;
@@ -1576,7 +1642,7 @@
         } else {
           name = (objs != null ? objs.name : void 0) || null;
           if (name === null) {
-            console.log("[RenderRouteMap.constructor] Arguments error: options." + key + ".name is require. (" + key + ".name is " + name + ")");
+            console.log("[RenderRouteMap.constructor] Arguments warning: options." + key + ".name is require. (" + key + ".name is " + name + ")");
           }
           return this[key] = new (((function() {
             var _results;
@@ -1688,7 +1754,7 @@
           /* Current latlng
           */
 
-          var infowindow, marker;
+          var infowindow, marker, _setCurrentLocation;
           _this.map.setCenter(_this.geocorder.getCurrentLocation());
           _this.setMap();
           _this.setDirectPanel();
@@ -1697,6 +1763,34 @@
           /* Event receivers
           */
 
+          _setCurrentLocation = function() {
+            return _this.geolocation.getCurrentLocation(function(result, status) {
+              var btn, w;
+              if (status === true) {
+                btn = _this.controlPanel.getCurrentElement();
+                return btn.val("(" + result.coords.latitude + ", " + result.coords.longitude + ")");
+              } else if (result.code === 1) {
+                console.log("[RenderRouteMap.run] Current location error: code " + result.code + ", " + result.message);
+                if (window.confirm("現在位置情報が設定により取得できなくなっています\n現在位置を使用する場合は、設定より位置情報を許可して下さい\n\n許可設定のヘルプを確認しますか？")) {
+                  w = window.open();
+                  return w.location.href = '/';
+                }
+              } else if (result.code === 1000) {
+                /* Tail recursion
+                */
+
+                console.log("[RenderRouteMap.run] Warning: tail recursion. " + status + result);
+                return _setCurrentLocation();
+              }
+            });
+          };
+          _this.controlPanel.addCurrentEvent(function(event, cls) {
+            /* On submit location current .
+            */
+            if (event.data.controlPanel.current.disabled === true) {
+              return _setCurrentLocation();
+            }
+          });
           _this.controlPanel.addClearaddrEvent(function(event, cls) {
             /* On submit clear input values.
             */
@@ -1720,7 +1814,7 @@
             return service._route(function(response, status) {
               /* Request calc route
               */
-              if (status.bool) {
+              if (status.bool === true) {
                 _this.controlPanel.showDirectTab();
                 _this.directRender.setDirections(response);
                 _this.infoPanel.setTotalDistance(response);
