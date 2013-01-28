@@ -34,7 +34,7 @@ define ['jquery'], ($) ->
       google.maps.Marker
       google.maps.MapTypeId
       google.maps.event
-      jQuery("html")
+      $ "html"
     catch error
       console.log "[wrapped-maps-jquery] Required module error: #{error}, Required module in maps.js."
       return no
@@ -54,6 +54,7 @@ define ['jquery'], ($) ->
     #
     #
     @charAt(0).toUpperCase() + @slice(1)
+
 
   class MAPSMODULE.BaseClass
     ### Common methods ###
@@ -107,11 +108,98 @@ define ['jquery'], ($) ->
       else
         el.text()
 
+    getSelector: (key) ->
+      ### ###
+      #
+      #
+      op = @getOptions()
+      for i in key.split "."
+        op = op[i]
+      op
+
+    getElement: (key) ->
+      ### ###
+      #
+      #
+      $ @getSelector(key)
+
+    _getObjkey: (object) ->
+      ### For one object ###
+      #
+      #
+      (k for k, v of object)[0]
+
+    _getObjvalue: (object) ->
+      ### For one object ###
+      #
+      #
+      (v for k, v of object)[0]
+
+    on: (object=null) ->
+      ### Utility ###
+      #
+      #
+      $(object.id).on object.event, {maincallback: object.callback.main, usercallback: object.callback.user}, object.method
+
     compute: (num) ->
       ### Compute lat and lng ###
       #
       #
       Math.round(num * 1000000000) / 1000000000
+
+
+  class MAPSMODULE.BaseApi extends MAPSMODULE.BaseClass
+    ### Common class ###
+    #
+    #
+
+    options:
+      baseurl: ''
+      format: 'json'
+
+    path_join: (list) ->
+      ### Path join ###
+      #
+      #
+      (s.replace(/^\/|\/$/g, '') for s in list when s).join '/'
+
+    url: (path) ->
+      ### Generate to Api url ###
+      #
+      #
+      @path_join [@options.baseurl, path]
+
+    toQueryString: (data) ->
+      str = []
+      for key, value of obj
+        str.push(encodeURIComponent key + "=" + encodeURIComponent value)
+      str.join "&"
+      str
+
+    common_callback: (json, callback, status, message) ->
+      ### Callback function ###
+      #
+      #
+      # console.log json, callback
+      callback?(json, status, message)
+
+    get: (url, callback) =>
+      ### ###
+      #
+      #
+      $.getJSON @url(url), (arrayobj) =>
+        @common_callback arrayobj, callback
+
+    post: (url, data, callback, format='json') ->
+      ### This function is like a getJSON for POST method ###
+      #
+      # formats::
+      #
+      #   json, html
+      #
+      $.post @url(url), data, (response) =>
+        @common_callback response, callback
+      , @options.format
 
 
   class MAPSMODULE.Event
@@ -389,7 +477,8 @@ define ['jquery'], ($) ->
 
     options:
       maximumAge: 0
-      timeout: 2000
+      timeout: 1500
+      frequency: 1000
       enableHighAccuracy: yes
 
     constructor: (options=null, @geolocation=@getGeo()) ->
@@ -518,6 +607,19 @@ define ['jquery'], ($) ->
       new @marker options
 
 
+  class MAPSMODULE.LatLng extends MAPSMODULE.BaseClass
+    ### ###
+    #
+    #
+    constructor: (options=null, @latlng=google.maps.LatLng) ->
+
+    @new: (lat, lng) ->
+      ### Utils ###
+      #
+      #
+      obj = new MAPSMODULE.LatLng()
+      new obj.latlng(lat, lng)
+
   class MAPSMODULE.InfoWindow extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
@@ -617,7 +719,7 @@ define ['jquery'], ($) ->
       center: null
       mapTypeId: google.maps.MapTypeId.ROADMAP
       scaleControlOptions:
-        position: google.maps.ControlPosition.BOTTOM_CENTER
+        position: google.maps.ControlPosition.BOTTOM_LEFT
 
     constructor: (@elName='#googlemaps', options=null, @map=google.maps.Map) ->
       ### Initializer ###
@@ -755,6 +857,20 @@ define ['jquery'], ($) ->
         total += legs.distance.value
       @el.find(@options.total).text total / 1000 + " km"
 
+
+  class MAPSMODULE.NearApi extends MAPSMODULE.BaseApi
+    ### For near search ###
+    #
+    #
+    #
+
+    near: (url, data, callback) ->
+      ### ###
+      #
+      #
+      data = @toQueryString(data) unless $.type(data) is 'string'
+      @get "#{url}?#{data}", callback
+
   class MAPSMODULE.RouteControlPanel extends MAPSMODULE.BaseClass
     ### Route controller panel ###
     #
@@ -773,6 +889,9 @@ define ['jquery'], ($) ->
         input: yes
         value: yes
         next: yes
+      near:
+        form: '#near_form'
+        point: '#near_point'
       start:
         point: '#start_point'
         checked: '#start_checked'
@@ -785,6 +904,7 @@ define ['jquery'], ($) ->
         nontollway: '#way_nontollway'
         nonhighway: '#way_nonhighway'
       tab:
+        active: '.tab-pane.active'
         direct: '#tab_direct'
         route: '#tab_route'
         show: '#tab_show'
@@ -797,13 +917,18 @@ define ['jquery'], ($) ->
         # bicycle: ''
         # transit: ''
         # walk: ''
-      erralert: '#erralert'
+      erralert: '.erralert'
       # event:
+        # near: '#click_near'
         # route: '#click_route'
-        # clearaddr: '#click_clearaddr'
+        # clearaddr: '.click_clearaddr'
       event:
         current:
           id: '.click_current'
+          event:
+            click: (event, cls) ->
+        near:
+          id: '#click_near'
           event:
             click: (event, cls) ->
         route:
@@ -811,7 +936,7 @@ define ['jquery'], ($) ->
           event:
             click: (event, cls) ->
         clearaddr:
-          id: '#click_clearaddr'
+          id: '.click_clearaddr'
           event:
             click: (event, cls) ->
 
@@ -839,6 +964,7 @@ define ['jquery'], ($) ->
               nontollway: '#way_nontollway'
               nonhighway: '#way_nonhighway'
             tab:
+              active: '.tab-pane.active'
               direct: '#tab_direct'
               route: '#tab_route'
               info: '#tab_info'
@@ -850,13 +976,18 @@ define ['jquery'], ($) ->
               # bicycle: ''
               # transit: ''
               # walk: ''
-            erralert: '#erralert'
+            erralert: '.erralert'
             # event:
+              # near: '#click_near'
               # route: '#click_route'
-              # clearaddr: '#click_clearaddr'
+              # clearaddr: '.click_clearaddr'
             event:
               current:
                 id: '.click_current'
+                event:
+                  click: (event, cls) ->
+              near:
+                id: '#click_near'
                 event:
                   click: (event, cls) ->
               route:
@@ -864,7 +995,7 @@ define ['jquery'], ($) ->
                 event:
                   click: (event, cls) ->
               clearaddr:
-                id: '#click_clearaddr'
+                id: '.click_clearaddr'
                 event:
                   click: (event, cls) ->
                   dblclick: (event, cls) -> # TODO: Multiple event, Not implemention.
@@ -931,17 +1062,17 @@ define ['jquery'], ($) ->
       #
       #
 
-    getSelector: (key) ->
-      op = @options
-      for i in key.split "."
-        op = op[i]
-      op
+    getActiveTab: ->
+      ### Active tab ###
+      #
+      #
+      @getElement 'tab.active'
 
-    getElement: (key) ->
-      ### ###
+    getActiveElement: (cls) ->
+      ###  ###
       #
       #
-      $ @getSelector(key)
+      @getActiveTab().find cls
 
     setValue: (key, value) ->
       ### Set value to a panel ###
@@ -1073,24 +1204,6 @@ define ['jquery'], ($) ->
       @getElement('end.point').focus -> self.getElement('end.checked').attr 'checked', yes
       @getElement('way.point').focus -> self.getElement('way.checked').attr 'checked', yes
 
-    _getObjkey: (object) ->
-      ### For one object ###
-      #
-      #
-      (k for k, v of object)[0]
-
-    _getObjvalue: (object) ->
-      ### For one object ###
-      #
-      #
-      (v for k, v of object)[0]
-
-    on: (object=null) ->
-      ### Utility ###
-      #
-      #
-      $(object.id).on object.event, {maincallback: object.callback.main, usercallback: object.callback.user}, object.method
-
     addEvent: (key, callback, event=@options.event) ->
       ### Common ###
       #
@@ -1120,6 +1233,13 @@ define ['jquery'], ($) ->
       #
       @addEvent 'current', callback
 
+    addNearEvent: (callback) ->
+      ### Add events listener ###
+      #
+      # Near event
+      #
+      @addEvent 'near', callback
+
     addRouteEvent: (callback) ->
       ### Add events listener ###
       #
@@ -1143,10 +1263,11 @@ define ['jquery'], ($) ->
     showError: (message, status) =>
       ### Show message ###
       #
+      # .. note:: Common selector ( class="erralert" )
       #
-      alt = @getElement('erralert')
+      alt = @getActiveElement @options.erralert
       alt.find('strong').text status
-      alt.find('span').text message
+      alt.find('span').html message
       alt.show()
       alt.find('.close').off("click").on "click", (e) ->
         $(@).parent().hide()
@@ -1154,8 +1275,9 @@ define ['jquery'], ($) ->
     hideError: =>
       ### Hide message ###
       #
+      # .. note:: Common selector ( class="erralert" )
       #
-      alt = @getElement('erralert')
+      alt = @getActiveElement @options.erralert
       alt.find('strong').text ''
       alt.find('span').text ''
       alt.hide()
@@ -1164,7 +1286,7 @@ define ['jquery'], ($) ->
       ### Get element of current location button ###
       #
       #
-      $('.tab-pane.active').find("#{@options.event.current.id}")
+      @getActiveElement @options.event.current.id
 
     onCurrent: (event) =>
       ### Enabled navigator.geolocation ###
@@ -1187,7 +1309,9 @@ define ['jquery'], ($) ->
     onClearaddr: (event) =>
       ### Clear form  ###
       #
+      # .. note:: Common selector ( class="clearaddr" )
       #
+      @setValue 'near.point', ''
       @setValue 'start.point', ''
       @setValue 'end.point', ''
       @setValue 'way.point', ''
@@ -1228,6 +1352,20 @@ define ['jquery'], ($) ->
       event.data?.usercallback event, @
       event.data?.maincallback event, @
 
+    onNear: (event) =>
+      ### Near search request ###
+      #
+      #
+      # Start
+      form = @getElement('near.form')
+
+      # Add parameter
+      @_addParamsToEvent event, {form}
+
+      # Calls
+      event.data?.usercallback event, @
+      event.data?.maincallback event, @
+
     _addParamsToEvent: (event, params) ->
       ### ###
       #
@@ -1237,7 +1375,166 @@ define ['jquery'], ($) ->
       for key, value of params
         event.data.controlPanel[key] = value
 
-  class MAPSMODULE.RenderRouteMap extends MAPSMODULE.BaseClass
+
+  class MAPSMODULE.MarkerWindow extends MAPSMODULE.BaseClass
+    ### Marker and InfoWindow Utilty ###
+    #
+    #
+
+    ### ###
+    #
+    #
+    infowindows: []
+
+    ### ###
+    #
+    #
+    markers: []
+
+    ### ###
+    #
+    #
+    calculatedArrayobj: []
+
+    constructor: (@arrayobj, options=null, @marker=MAPSMODULE.Marker, @infowindow=MAPSMODULE.InfoWindow) ->
+      ### ###
+      #
+      #
+
+      # Set options
+      if options isnt null then @setOptions options
+
+      # Calc
+      @calcMarkerPosition @arrayobj
+
+    setTitleAttributes: (@titleKeys) ->
+      ### ###
+      #
+      #
+
+    getTitle: (obj) ->
+      ### ###
+      #
+      #
+
+      r = ""
+      for k in titleKeys
+        r += "#{obj[k]}"
+      r
+
+    getBody: (obj) ->
+      ### ###
+      #
+      #
+
+      r = ""
+      for k in bodyKeys
+        r += "#{obj[k]}<br />\n"
+      r
+
+    setBodyAttributes: (@bodyKeys) ->
+      ### ###
+      #
+      #
+
+    setMap: (@map) ->
+      ### ###
+      #
+      #
+      #
+
+    setCalculatedArrayobj: (obj) ->
+      ### ###
+      #
+      #
+      @calculatedArrayobj.push obj
+
+    setInfoWindow: (infowindow) ->
+      ### ###
+      #
+      #
+
+      @infowindows.push infowindow
+
+    setMarker: (marker) ->
+      ### ###
+      #
+      #
+
+      @marker.push marker
+
+    closeWindows: ->
+      ### ###
+      #
+      #
+      if @infowindows.length
+        for infowindow in @infowindows
+          @infowindows.close()
+
+    calcMarkerPosition: (arrayobj) ->
+      ### ###
+      #
+      #
+      random = ->
+        Math.floor Math.random() * 4
+
+      lat = 0.0001
+      lng = 0.0002
+
+      runner = (obj) =>
+
+        unless @isLatLng obj
+          return obj
+
+        ### Tail recursion ###
+        #
+
+        if random() is 0
+          obj.latitude += lat
+          obj.longitude += lng
+        else if random() is 1
+          obj.latitude -= lat
+          obj.longitude -= lng
+        else if random() is 3
+          obj.latitude -= lat
+          obj.longitude += lng
+        else if random() is 4
+          obj.latitude += lat
+          obj.longitude -= lng
+
+        return runner obj
+
+
+      for obj in arrayobj
+        @setCalculatedArrayobj runner(obj)
+
+        # @setMarkers
+        # @setInfoWindow
+        # @setCalculatedArrayobj
+
+    isLatLng: (o) ->
+      for c in @calculatedArrayobj
+        return true if (c.latitude is o.latitude) and (c.longitude is o.longitude)
+      false
+
+    run: (arrayobj=@arrayobj) ->
+      ### ###
+      #
+      #
+
+      # Set marker
+      # for obj in @calculatedArrayobj
+
+        # # New marker
+        # marker = @getMarker @latlng.new(obj.latitude, obj.longitude)
+
+        # # infowindow = @openInfowindow marker, obj.title, obj.required
+
+      # # debug
+      # console.log arrayobj
+
+
+  class MAPSMODULE.RenderMap extends MAPSMODULE.BaseClass
     ### Route map class ###
     #
     #
@@ -1285,6 +1582,17 @@ define ['jquery'], ($) ->
     #
     infowindow: MAPSMODULE.InfoWindow
 
+    ### Marker window ###
+    #
+    #
+    markerWindow: MAPSMODULE.MarkerWindow
+
+    ### LatLng object ###
+    #
+    # @param {google.maps.LatLng}
+    #
+    latlng: MAPSMODULE.LatLng
+
     ### Event object ###
     #
     # @param {google.maps.event}
@@ -1302,6 +1610,12 @@ define ['jquery'], ($) ->
     # @param {navigator.geolocation}
     #
     geolocation: MAPSMODULE.Geolocation
+
+    ### NearApi object ###
+    #
+    # @param {MAPSMODULE.NearApi}
+    #
+    nearApi: MAPSMODULE.NearApi
 
     constructor: (options=null) ->
       ### Initializer
@@ -1359,6 +1673,9 @@ define ['jquery'], ($) ->
       # Geolocation
       @setOptionClass options, 'geolocation'
 
+      # Apis
+      @nearApi = new @nearApi()
+
       # My options
       @place = options?.place
 
@@ -1376,7 +1693,7 @@ define ['jquery'], ($) ->
         # Obj options
         name = objs?.name or null
         if name is null
-          console.log "[RenderRouteMap.constructor] Arguments warning: options.#{key}.name is require. (#{key}.name is #{name})"
+          console.log "[RenderMap.constructor] Arguments warning: options.#{key}.name is require. (#{key}.name is #{name})"
         @[key] = new (
           if (v for v of objs?.options).length
             (@[key] name, objs.options)
@@ -1428,7 +1745,7 @@ define ['jquery'], ($) ->
       if directPanelEl.is '*'
         @directRender.setPanel directPanelEl.get(0)
       else
-        console.log "[RenderRouteMap.setDirectPanel] Arguments error: (directPanelEl is #{directPanelEl})"
+        console.log "[RenderMap.setDirectPanel] Arguments error: (directPanelEl is #{directPanelEl})"
 
     run: (options={}) ->
       ### Render map ###
@@ -1458,51 +1775,12 @@ define ['jquery'], ($) ->
         #
         #
 
-        _setCurrentLocation = =>
-          ######
-          #
-          #
-
-          # Call navigator.geolocation
-          @geolocation.getCurrentLocation (result, status) =>
-            # Set current location
-            #
-            #
-            if status is yes
-              # Allow geolocation
-              #
-              #
-              btn = @controlPanel.getCurrentElement()
-              btn.val "(#{result.coords.latitude}, #{result.coords.longitude})"
-
-            else if result.code is 1
-              # Deny geolocation
-              #
-              #
-              console.log "[RenderRouteMap.run] Current location error: code #{result.code}, #{result.message}"
-
-              if window.confirm """
-              現在位置情報が設定により取得できなくなっています
-              現在位置を使用する場合は、設定より位置情報を許可して下さい
-
-              許可設定のヘルプを確認しますか？
-              """
-                w = window.open()
-                w.location.href = '/'
-
-            else if result.code is 1000
-              ### Tail recursion ###
-              #
-              #
-              console.log "[RenderRouteMap.run] Warning: tail recursion. #{status}#{result}"
-              _setCurrentLocation()
-
         @controlPanel.addCurrentEvent (event, cls) =>
           ### On submit location current . ###
           #
           #
           if event.data.controlPanel.current.disabled is yes
-            _setCurrentLocation()
+            @_setCurrentLocation()
 
         @controlPanel.addClearaddrEvent (event, cls) =>
           ### On submit clear input values. ###
@@ -1527,13 +1805,30 @@ define ['jquery'], ($) ->
             ### Request calc route ###
             #
             #
-            if status.bool is yes
+            if status.bool is no
+              @controlPanel.showError status.message, status.status
+            else
               @controlPanel.showDirectTab()
               @directRender.setDirections response
               @infoPanel.setTotalDistance response
               @controlPanel.hideError()
+
+        @controlPanel.addNearEvent (event, cls) =>
+          ### Near search ###
+          #
+          #
+          form = event.data.controlPanel.form
+          @nearApi.near form.get(0).action, form.serialize(), (arrayobj) =>
+            if arrayobj.length < 1
+              # Zero result
+              #
+              @controlPanel.showError "文言を変更して、再度検索して下さい", 'NOT_FOUND '
             else
-              @controlPanel.showError status.message, status.status
+              # Set latlng to a map options.
+              #
+              #
+              @controlPanel.hideError()
+              @_setMarkers arrayobj
 
         @event.on marker.getNewobj(), 'click', (event) =>
           ### Mouse event receiver ###
@@ -1561,6 +1856,68 @@ define ['jquery'], ($) ->
         # google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
           # computeTotalDistance(directionsDisplay.directions);
         # })
+
+    _setCurrentLocation: =>
+      ### Set value of current location into button attributes. ###
+      #
+      #
+
+      # Call navigator.geolocation
+      @geolocation.getCurrentLocation (result, status) =>
+        # Set current location
+        #
+        #
+        if status is yes
+          # Allow geolocation
+          #
+          #
+          btn = @controlPanel.getCurrentElement()
+          btn.val "(#{result.coords.latitude}, #{result.coords.longitude})"
+
+        else if result.code is 1
+          # Deny geolocation
+          #
+          #
+          console.log "[RenderMap.run] Current location error: code #{result.code}, #{result.message}"
+
+          if window.confirm """
+          現在位置情報が設定により取得できなくなっています
+          現在位置を使用する場合は、設定より位置情報を許可して下さい
+
+          許可設定のヘルプを確認しますか？
+          """
+            alert "TODO: Redirect to help view"
+            # w = window.open()
+            # w.location.href = '/'
+
+        else if result.code is 1000
+          ### Tail recursion ###
+          #
+          #
+          console.log "[RenderMap.run] Warning: tail recursion.", status, result
+          @_setCurrentLocation()
+
+    _setMarkers: (arrayobj) ->
+      ### ###
+      #
+      #
+
+      first = arrayobj[0]
+      @map.setCenter @latlng.new(first.latitude, first.longitude)
+
+      markerWindow = new @markerWindow arrayobj
+      # markerWindow.run()
+      # Set marker
+      for obj in markerWindow.calculatedArrayobj
+
+        # New marker
+        marker = @getMarker @latlng.new(obj.latitude, obj.longitude)
+
+        # infowindow = @openInfowindow marker, obj.title, obj.required
+
+      # debug
+      console.log arrayobj
+
 
 
   MAPSMODULE
