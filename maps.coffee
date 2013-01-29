@@ -202,7 +202,7 @@ define ['jquery'], ($) ->
       , @options.format
 
 
-  class MAPSMODULE.Event
+  class MAPSMODULE.Event extends MAPSMODULE.BaseClass
     ### Wrapped ###
     #
     #
@@ -213,10 +213,10 @@ define ['jquery'], ($) ->
       ### Event listener ###
       #
       #
-      MAPSMODULE.Event.event.addListener object, event, callback
+      MAPSMODULE.Event.event.addListener object?.getNewobj?() or object, event, callback
 
 
-  class MAPSMODULE.DirectionsStatue
+  class MAPSMODULE.DirectionsStatue extends MAPSMODULE.BaseClass
     ### Status Errors ###
     #
     # .. Response status of Direction service ::
@@ -278,7 +278,7 @@ define ['jquery'], ($) ->
       ### Set map object. ###
       #
       #
-      @getNewobj().setMap map
+      @getNewobj().setMap map?.getNewobj?() or map
 
     setPanel: (panelName=@panelName) ->
       ### Set panel by element name. ###
@@ -604,7 +604,13 @@ define ['jquery'], ($) ->
       ### Get new object ###
       #
       #
-      new @marker options
+      new @marker
+        position: options.position?.getNewobj?() or options.position
+        map: options.map?.getNewobj?() or options.map
+        title: options.title
+
+    setMap: (obj) ->
+      @newobj.setMap obj
 
 
   class MAPSMODULE.LatLng extends MAPSMODULE.BaseClass
@@ -634,13 +640,15 @@ define ['jquery'], ($) ->
       title: null
       body: null
 
+    template: null
+
     defaultTemplate: """
     <div class="">
       <div class="modal-header modal-header-wrapper">
         <h3>{title}</h3>
       </div>
       <div class="modal-body">
-        <span>{body}</span>
+        {body}
       </div>
     </div>
     """
@@ -665,13 +673,17 @@ define ['jquery'], ($) ->
       #
       new @infowindow()
 
-    getContent: (title, body) ->
+    getContent: (title, body, obj) ->
       ### ###
       #
       #
-      newinfo = @getNewobj() or @getNew()
-      newinfo.setContent @renderTemplate(title, body)
+      newinfo = @getNewobj?() or @getNew()
+      newinfo.setContent @renderTemplate(title, body, obj)
       newinfo
+
+    setTemplate: (@template) ->
+      ### ###
+      #
 
     getTemplate: ->
       ### Get default template or specific element ###
@@ -679,16 +691,25 @@ define ['jquery'], ($) ->
       #
       if @el.is '*'
         @el.html()
+      else if @template
+        @template
       else
         @defaultTemplate
 
-    renderTemplate: (title=null, body=null) ->
+    renderTemplate: (title=null, body=null, obj=null) ->
       ### ###
       #
       #
       t = @getTemplate()
-      t = t.replace '{title}', title or @options?.title
-      t = t.replace '{body}', body or @options?.body
+      if obj
+        for key, value of obj
+          t = t.split("{#{key}}").join value
+          t = t.split("%7B#{key}%7D").join value
+      else
+        t = t.replace /{title}/g, title or @options?.title
+        t = t.replace /{body}/g, body or @options?.body
+        t = t.replace /%7Btitle%7D/g, title or @options?.title
+        t = t.replace /%7Bbody%7D/g, body or @options?.body
       t
 
     open: (title, body, map=@options.map, marker=@options.marker) ->
@@ -696,8 +717,19 @@ define ['jquery'], ($) ->
       #
       #
       info = @getContent title, body
-      info.open map, marker
+      info.open map?.getNewobj?() or map, marker?.getNewobj?() or marker
       info
+
+    openTemplate: (obj, map=@options.map, marker=@options.marker) ->
+      ### Open info window ###
+      #
+      #
+      info = @getContent null, null, obj
+      info.open map?.getNewobj?() or map, marker?.getNewobj?() or marker
+      info
+
+    close: ->
+      @newobj.close()
 
 
   class MAPSMODULE.Map extends MAPSMODULE.BaseClass
@@ -766,6 +798,16 @@ define ['jquery'], ($) ->
       #
       new @map el.get(0), options
 
+    getAutoInfowindow: ->
+      ### ###
+      #
+      if @el.attr('auto-infowindow') is 'false' then no else yes
+
+    getAutoMarker: ->
+      ### ###
+      #
+      if @el.attr('auto-marker') is 'false' then no else yes
+
     getAddress: ->
       ### Address ###
       #
@@ -806,13 +848,15 @@ define ['jquery'], ($) ->
       #
       @el = $ @elName
 
-    setTotalDistance: (results, object) ->
+    setTotalDistance: (results, object=null) ->
       ### Set total distance ###
       #
       # TODO: Bugfix
       #
       data = ''
-      for routes in results.routes
+      r = results?.getNewobj?().routes or results.routes
+
+      for routes in r
         for overview_path in routes.overview_path
           data += "#{@compute overview_path.lng()},#{@compute overview_path.lat()}\n"
       @setValue data
@@ -848,14 +892,16 @@ define ['jquery'], ($) ->
       #
       @el = $ @elName
 
-    setTotalDistance: (results, object) ->
+    setTotalDistance: (results, object=null) ->
       ### Set total distance ###
       #
       #
       total = 0
-      for legs in results.routes[0].legs
+      first = results?.getNewobj?().routes[0] or results.routes[0]
+
+      for legs in first.legs
         total += legs.distance.value
-      @el.find(@options.total).text total / 1000 + " km"
+      @el.find(@options.total).text(total / 1000 + " km")
 
 
   class MAPSMODULE.NearApi extends MAPSMODULE.BaseApi
@@ -886,6 +932,7 @@ define ['jquery'], ($) ->
     #
     options:
       focus:
+        enabled: '#focus_enabled'
         input: yes
         value: yes
         next: yes
@@ -1108,6 +1155,8 @@ define ['jquery'], ($) ->
       ### Set latLng to dom and next focus. ###
       #
       #
+      return false unless @isChecked 'focus.enabled'
+
       if @isChecked 'start.checked'
         @setValueTostart latlng
         @nextFocus 'start.point'
@@ -1296,6 +1345,9 @@ define ['jquery'], ($) ->
       btn = @getCurrentElement()
       boolean = if btn.hasClass("active") then no else yes
 
+      if boolean is yes
+        @nextFocus 'start.point'
+
       # For disabled
       btn.parents(".controls").find('[type="text"]').attr 'disabled', boolean
 
@@ -1311,13 +1363,16 @@ define ['jquery'], ($) ->
       #
       # .. note:: Common selector ( class="clearaddr" )
       #
-      @setValue 'near.point', ''
-      @setValue 'start.point', ''
-      @setValue 'end.point', ''
-      @setValue 'way.point', ''
-      @getElement('start.checked').attr 'checked', yes
-      @getElement('way.nonhighway').attr 'checked', no
-      @getElement('way.nontollway').attr 'checked', no
+      @getActiveElement(@options.near.point).val ''
+      @getActiveElement(@options.start.point).val ''
+      @getActiveElement(@options.end.point).val ''
+      @getActiveElement(@options.way.point).val ''
+      @getActiveElement(@options.start.checked).attr 'checked', yes
+      @getActiveElement(@options.way.nonhighway).attr 'checked', no
+      @getActiveElement(@options.way.nontollway).attr 'checked', no
+      @getActiveElement(@options.start.point).attr 'disabled', no
+      @getActiveElement(@options.near.point).attr 'disabled', no
+      @getCurrentElement().removeClass "active"
 
       # Calls
       event.data?.usercallback event, @
@@ -1343,7 +1398,7 @@ define ['jquery'], ($) ->
       # Way point
       waypts = []
       for wats in @getValue("way.point").split "\n"
-        if wats != '' then waypts.push {location: wats, stopover: yes}
+        waypts.push {location: wats, stopover: yes} if wats != ''
 
       # Add parameter
       @_addParamsToEvent event, options: {start, end, hw, toll, mode, waypts}
@@ -1358,6 +1413,16 @@ define ['jquery'], ($) ->
       #
       # Start
       form = @getElement('near.form')
+      if @getCurrentElement().hasClass("active")
+        latlng = @getCurrentElement().val().replace(')', '').replace('(', '').split(',')
+        lat = latlng[0]
+        lng = latlng[1]
+        $('<input>')
+          .attr('type','hidden').attr('value', lat).attr('name', 'latitude')
+          .appendTo form
+        $('<input>')
+          .attr('type','hidden').attr('value', lng).attr('name', 'longitude')
+          .appendTo form
 
       # Add parameter
       @_addParamsToEvent event, {form}
@@ -1384,20 +1449,27 @@ define ['jquery'], ($) ->
     ### ###
     #
     #
-    infowindows: []
+    options:
+      lat: 0.00012
+      lng: 0.0002
 
     ### ###
     #
     #
-    markers: []
+    @infowindows: []
+
+    ### ###
+    #
+    #
+    @markers: []
 
     ### ###
     #
     #
     calculatedArrayobj: []
 
-    constructor: (@arrayobj, options=null, @marker=MAPSMODULE.Marker, @infowindow=MAPSMODULE.InfoWindow) ->
-      ### ###
+    constructor: (@arrayobj, options=null, @marker=MAPSMODULE.Marker, @infowindow=MAPSMODULE.InfoWindow, @latlng=MAPSMODULE.LatLng, @event=MAPSMODULE.Event) ->
+      ### Initializer ###
       #
       #
 
@@ -1405,37 +1477,36 @@ define ['jquery'], ($) ->
       if options isnt null then @setOptions options
 
       # Calc
-      @calcMarkerPosition @arrayobj
+      @setArrayObj @arrayobj
 
-    setTitleAttributes: (@titleKeys) ->
-      ### ###
+    setTitleAttributes: (@titleKeys...) ->
+      ### Setter ###
       #
       #
 
     getTitle: (obj) ->
-      ### ###
+      ### Getter ###
       #
       #
+      ("<span class='marker-info-header-#{k}'>#{obj[k]}</span>" for k in @titleKeys).join('') if @titleKeys
 
-      r = ""
-      for k in titleKeys
-        r += "#{obj[k]}"
-      r
 
     getBody: (obj) ->
+      ### Setter ###
+      #
+      #
+      ("<div class='marker-info-body-#{k}'>#{obj[k]}</div>\n" for k in @bodyKeys).join('') if @bodyKeys
+
+    setBodyAttributes: (@bodyKeys...) ->
       ### ###
       #
       #
 
-      r = ""
-      for k in bodyKeys
-        r += "#{obj[k]}<br />\n"
-      r
-
-    setBodyAttributes: (@bodyKeys) ->
-      ### ###
+    getMap: ->
+      ### Getter ###
       #
       #
+      @map
 
     setMap: (@map) ->
       ### ###
@@ -1443,95 +1514,176 @@ define ['jquery'], ($) ->
       #
       #
 
+    getCalculatedArrayobj: ->
+      ### Getter ###
+      #
+      #
+      @calculatedArrayobj
+
     setCalculatedArrayobj: (obj) ->
-      ### ###
+      ### Setter ###
       #
       #
       @calculatedArrayobj.push obj
 
     setInfoWindow: (infowindow) ->
-      ### ###
+      ### Setter ###
       #
       #
 
-      @infowindows.push infowindow
+      MAPSMODULE.MarkerWindow.infowindows.push infowindow
 
     setMarker: (marker) ->
+      ### Setter ###
+      #
+      #
+      MAPSMODULE.MarkerWindow.markers.push marker
+
+    getMarker: (latlng, obj, map=@getMap()) ->
+      ### Getter ###
+      #
+      #
+      marker = new @marker {position: latlng, title: @getTitle(obj), map}
+      @setMarker marker
+      marker
+
+    setTemplate: (template) ->
+      ### Setter ###
+      #
+      #
+      @defaultTemplateEl = $ template
+      t = @defaultTemplateEl.clone()
+      @template = "<div class='marker-window-template'>#{t.attr('id', '').removeClass('hide').html()}</div>"
+
+    getInfowindow: (marker, obj, map=@getMap()) ->
+      ### Open info window ###
+      #
+      #
+      # Get marker object
+      infowindow = new @infowindow {marker, title: @getTitle(obj), map}
+      infowindow.setTemplate @template if @template
+      @setInfoWindow infowindow
+      infowindow
+
+    getLatLng: (lat, lng) ->
+      ### Getter ###
+      #
+      #
+      @latlng.new lat, lng
+
+    openInfowindow: (marker, obj) ->
       ### ###
       #
       #
-
-      @marker.push marker
+      infowindow = @getInfowindow marker, obj
+      if @template then infowindow.openTemplate obj else infowindow.open @getTitle(obj), @getBody(obj)
+      infowindow
 
     closeWindows: ->
-      ### ###
+      ### Closer ###
       #
       #
-      if @infowindows.length
-        for infowindow in @infowindows
-          @infowindows.close()
+      if MAPSMODULE.MarkerWindow.infowindows.length
+        (infowindow.close() for infowindow in MAPSMODULE.MarkerWindow.infowindows)
+
+    closeMarkers: ->
+      ### Closer ###
+      #
+      #
+      if MAPSMODULE.MarkerWindow.markers.length
+        (marker.setMap null for marker in MAPSMODULE.MarkerWindow.markers)
+
+    setArrayObj: (@arrayobj) ->
+      ### Setter ###
+      #
+      #
+      @calculatedArrayobj = []
+      @calcMarkerPosition @arrayobj if @arrayobj
 
     calcMarkerPosition: (arrayobj) ->
-      ### ###
+      ### clcer ###
       #
       #
-      random = ->
-        Math.floor Math.random() * 4
-
-      lat = 0.0001
-      lng = 0.0002
-
-      runner = (obj) =>
-
-        unless @isLatLng obj
-          return obj
-
-        ### Tail recursion ###
-        #
-
-        if random() is 0
-          obj.latitude += lat
-          obj.longitude += lng
-        else if random() is 1
-          obj.latitude -= lat
-          obj.longitude -= lng
-        else if random() is 3
-          obj.latitude -= lat
-          obj.longitude += lng
-        else if random() is 4
-          obj.latitude += lat
-          obj.longitude -= lng
-
-        return runner obj
-
-
-      for obj in arrayobj
-        @setCalculatedArrayobj runner(obj)
-
+      (@setCalculatedArrayobj @compute(obj) for obj in arrayobj)
         # @setMarkers
         # @setInfoWindow
         # @setCalculatedArrayobj
 
+    compute: (obj) =>
+      ### calc lat lng ###
+      #
+      #
+      return obj unless @isLatLng obj
+
+      random = ->
+        Math.floor Math.random() * 4
+
+      ### Tail recursion ###
+      #
+      num = random()
+
+      lat = @options.lat
+      lng = @options.lng
+
+      if num is 0
+        obj.latitude += lat
+        obj.longitude += lng
+      else if num is 1
+        obj.latitude -= lat
+        obj.longitude -= lng
+      else if num is 2
+        obj.latitude -= lat
+        obj.longitude += lng
+      else if num is 3
+        obj.latitude += lat
+        obj.longitude -= lng
+
+      @compute obj
+
     isLatLng: (o) ->
+      ### ###
+      #
       for c in @calculatedArrayobj
         return true if (c.latitude is o.latitude) and (c.longitude is o.longitude)
       false
 
-    run: (arrayobj=@arrayobj) ->
+    onMemory: (marker, obj) ->
+      ### On memory event listener ###
+      #
+      #
+      self = @
+      ((marker, obj) ->
+        self.event.on marker, 'click', (event) ->
+          ### Mouse event receiver ###
+          #
+          #
+
+          # Window
+          self.closeWindows()
+          self.openInfowindow marker, obj
+
+          # Event fire
+          $.event.trigger 'ajaxStop'
+
+      )(marker, obj)
+
+    run: (arrayobj=@getCalculatedArrayobj()) ->
       ### ###
       #
       #
 
+      # Closes
+      @closeWindows()
+      @closeMarkers()
+
       # Set marker
-      # for obj in @calculatedArrayobj
-
-        # # New marker
-        # marker = @getMarker @latlng.new(obj.latitude, obj.longitude)
-
-        # # infowindow = @openInfowindow marker, obj.title, obj.required
-
-      # # debug
-      # console.log arrayobj
+      for obj in arrayobj
+        # New marker
+        marker = @getMarker @getLatLng(obj.latitude, obj.longitude), obj
+        # Set info window
+        # infowindow = @openInfowindow marker, obj
+        # Click event
+        @onMemory marker, obj
 
 
   class MAPSMODULE.RenderMap extends MAPSMODULE.BaseClass
@@ -1673,6 +1825,9 @@ define ['jquery'], ($) ->
       # Geolocation
       @setOptionClass options, 'geolocation'
 
+      # MarkerWindow
+      @markerWindow = new @markerWindow()
+
       # Apis
       @nearApi = new @nearApi()
 
@@ -1710,18 +1865,17 @@ define ['jquery'], ($) ->
       @geocorder.addressToLatlng place or @map.getAddress(), (results, status, message) ->
         callback results, status, message
 
-    getMarker: (latlng, title=@map.getTitle(), map=@map.getNewobj()) ->
+    getMarker: (latlng, title=@map.getTitle(), map=@map) ->
       ### Get marker object ###
       #
       #
       new @marker {position: latlng, title, map}
 
-    getInfowindow: (marker, title=@map.getTitle(), map=@map.getNewobj()) ->
+    getInfowindow: (marker, title=@map.getTitle(), map=@map) ->
       ### Open info window ###
       #
       #
       # Get marker object
-      marker = marker?.getNewobj() or marker
       new @infowindow {marker, map, title}
 
     openInfowindow: (marker, title=@map.getTitle(), body=@map.getBody()) ->
@@ -1732,7 +1886,7 @@ define ['jquery'], ($) ->
       infowindow.open title, body
       infowindow
 
-    setMap: (map=@map.getNewobj()) ->
+    setMap: (map=@map) ->
       ### Set map ###
       #
       #
@@ -1769,7 +1923,7 @@ define ['jquery'], ($) ->
         marker = @getMarker @geocorder.getCurrentLocation()
 
         # New infowindow
-        infowindow = @openInfowindow marker
+        infowindow = if @map.getAutoInfowindow() then @openInfowindow marker else @getInfowindow marker
 
         ### Event receivers ###
         #
@@ -1828,29 +1982,45 @@ define ['jquery'], ($) ->
               #
               #
               @controlPanel.hideError()
-              @_setMarkers arrayobj
 
-        @event.on marker.getNewobj(), 'click', (event) =>
+              first = arrayobj[0]
+
+              # Set latlong of first object into map.
+              @map.setCenter @latlng.new(first.latitude, first.longitude)
+
+              # Set map
+              @markerWindow.setMap @map
+
+              # Mapping title and body keys.
+              @markerWindow.setTemplate '#marker_window'
+              # @markerWindow.setTitleAttributes 'title', 'area_name', 'city_name', 'jobtype_name', 'pref_name'
+              # @markerWindow.setBodyAttributes 'descript', 'url', 'required', 'pr', 'transport'
+
+              # New marker obj
+              @markerWindow.setArrayObj arrayobj
+
+              # Runner
+              @markerWindow.run()
+
+        @event.on marker, 'click', (event) =>
           ### Mouse event receiver ###
           #
           #
           @openInfowindow marker
 
-        @event.on @map.getNewobj(), 'click', (event) =>
+        @event.on @map, 'click', (event) =>
           ### Mouse event receiver ###
-
           #
-          @controlPanel.showControlTab()
-          @controlPanel.setPoint event.latLng, @map.getNewobj()
+          #
+          if @controlPanel.setPoint event.latLng, @map isnt false
+            @controlPanel.showControlTab()
 
-        @event.on @directRender.getNewobj(), 'click', (event) =>
+        @event.on @directRender, 'click', (event) =>
           ### Directions changed event receiver ###
           #
           #
-          newobj = @directRender.getNewobj()
-
-          @directPanel.setTotalDistance newobj.directions, newobj
-          @infoPanel.setTotalDistance newobj.directions, newobj
+          @directPanel.setTotalDistance @directRender
+          @infoPanel.setTotalDistance @directRender
 
         # TODO: Next impl
         # google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
@@ -1872,7 +2042,7 @@ define ['jquery'], ($) ->
           #
           #
           btn = @controlPanel.getCurrentElement()
-          btn.val "(#{result.coords.latitude}, #{result.coords.longitude})"
+          btn.val "(#{result.coords.latitude},#{result.coords.longitude})"
 
         else if result.code is 1
           # Deny geolocation
@@ -1896,28 +2066,6 @@ define ['jquery'], ($) ->
           #
           console.log "[RenderMap.run] Warning: tail recursion.", status, result
           @_setCurrentLocation()
-
-    _setMarkers: (arrayobj) ->
-      ### ###
-      #
-      #
-
-      first = arrayobj[0]
-      @map.setCenter @latlng.new(first.latitude, first.longitude)
-
-      markerWindow = new @markerWindow arrayobj
-      # markerWindow.run()
-      # Set marker
-      for obj in markerWindow.calculatedArrayobj
-
-        # New marker
-        marker = @getMarker @latlng.new(obj.latitude, obj.longitude)
-
-        # infowindow = @openInfowindow marker, obj.title, obj.required
-
-      # debug
-      console.log arrayobj
-
 
 
   MAPSMODULE
