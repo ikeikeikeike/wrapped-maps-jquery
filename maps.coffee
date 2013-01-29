@@ -19,7 +19,6 @@ define ['jquery'], ($) ->
   MAPSMODULE.moduleChecker = ->
     ### Using modules ###
     #
-    #
     try
       google.maps.Geocoder
       google.maps.GeocoderStatus
@@ -44,55 +43,56 @@ define ['jquery'], ($) ->
 
   ### Utility ###
   #
-  #
   String.prototype.capitalize = ->
     ###
     .. e.g. ::
 
       "hello world".capitalize();  =>  "Hello world"
     ###
-    #
-    #
     @charAt(0).toUpperCase() + @slice(1)
 
 
   class MAPSMODULE.BaseClass
-    ### Common methods ###
-    #
+    ### Common Mixin ###
     #
 
-    ### New object ###
+    ### A property passed through constructor ###
     #
+    # .. note:: XXX
     #
     newobj: null
 
     getOptions: ->
-      ### Get options ###
-      #
-      #
+      ### XXX:
+
+      @return {Object}
+      ###
       @options
 
     setOptions: (objects) ->
-      ### Set options by objects ###
-      #
-      #
+      ### Set options by objects
+
+      @param {Object} objects
+      ###
       for key, value of objects
         @options[key] = value
 
     getNewobj: ->
-      ### Get new object ###
-      #
+      ### XXX: ###
       #
       @newobj
 
     setNewobj: (@newobj) ->
-      ### Set new object ###
-      #
-      #
+      ### XXX:
+
+      @pparam {Object} newobj
+      ###
 
     setValue: (value, el=@el) ->
       ### Set value to a dom ###
       #
+      # @param {String} value
+      # @param {jQuery.Element} el
       #
       if el.is("[type='text'],textarea")
         el.val value
@@ -102,15 +102,13 @@ define ['jquery'], ($) ->
     getValue: (el=@el) ->
       ### Get value of a dom ###
       #
-      #
       if el.is("[type='text'],textarea")
         el.val()
       else
         el.text()
 
     getSelector: (key) ->
-      ### ###
-      #
+      ### From options.key ###
       #
       op = @getOptions()
       for i in key.split "."
@@ -118,32 +116,27 @@ define ['jquery'], ($) ->
       op
 
     getElement: (key) ->
-      ### ###
-      #
+      ### XXX: ###
       #
       $ @getSelector(key)
 
     _getObjkey: (object) ->
       ### For one object ###
       #
-      #
       (k for k, v of object)[0]
 
     _getObjvalue: (object) ->
       ### For one object ###
-      #
       #
       (v for k, v of object)[0]
 
     on: (object=null) ->
       ### Utility ###
       #
-      #
       $(object.id).on object.event, {maincallback: object.callback.main, usercallback: object.callback.user}, object.method
 
     compute: (num) ->
       ### Compute lat and lng ###
-      #
       #
       Math.round(num * 1000000000) / 1000000000
 
@@ -151,44 +144,41 @@ define ['jquery'], ($) ->
   class MAPSMODULE.BaseApi extends MAPSMODULE.BaseClass
     ### Common class ###
     #
-    #
 
     options:
       baseurl: ''
       format: 'json'
 
     path_join: (list) ->
-      ### Path join ###
-      #
+      ### XXX: ###
       #
       (s.replace(/^\/|\/$/g, '') for s in list when s).join '/'
 
     url: (path) ->
-      ### Generate to Api url ###
-      #
+      ### Generate to apiurl ###
       #
       @path_join [@options.baseurl, path]
 
     toQueryString: (data) ->
+      ### Convert from obj to string ###
+      #
       str = []
       for key, value of obj
         str.push(encodeURIComponent key + "=" + encodeURIComponent value)
       str.join "&"
       str
 
-    common_callback: (json, callback, status, message) ->
+    commonCallback: (json, callback, status, message) ->
       ### Callback function ###
-      #
       #
       # console.log json, callback
       callback?(json, status, message)
 
     get: (url, callback) =>
-      ### ###
-      #
+      ### XXX: ###
       #
       $.getJSON @url(url), (arrayobj) =>
-        @common_callback arrayobj, callback
+        @commonCallback arrayobj, callback
 
     post: (url, data, callback, format='json') ->
       ### This function is like a getJSON for POST method ###
@@ -198,20 +188,17 @@ define ['jquery'], ($) ->
       #   json, html
       #
       $.post @url(url), data, (response) =>
-        @common_callback response, callback
+        @commonCallback response, callback
       , @options.format
 
 
   class MAPSMODULE.Event extends MAPSMODULE.BaseClass
     ### Wrapped ###
     #
-    #
-    #
     @event: google.maps.event
 
     @on: (object, event, callback) ->
-      ### Event listener ###
-      #
+      ### Utility ###
       #
       MAPSMODULE.Event.event.addListener object?.getNewobj?() or object, event, callback
 
@@ -235,7 +222,7 @@ define ['jquery'], ($) ->
     statues: []
 
     constructor: (@directionsStatus=google.maps.DirectionsStatus) ->
-      ### Initializer ###
+      ### XXX: ###
       #
       #
       @statues[@directionsStatus.INVALID_REQUEST] = 'DirectionsRequest が無効'
@@ -249,24 +236,20 @@ define ['jquery'], ($) ->
     getMessage: (status) ->
       ### Get status message ###
       #
-      #
       @statues[status]
 
 
   class MAPSMODULE.DirectionsRenderer extends MAPSMODULE.BaseClass
-    ### Wrapping class  ###
-    #
+    ### Wrapping XXX: ###
     #
 
     ### Render options ###
-    #
     #
     options:
       draggable: yes
 
     constructor: (@panelName, options=null, @directionsRenderer=google.maps.DirectionsRenderer) ->
-      ### Initializer ###
-      #
+      ### XXX: ###
       #
 
       # Set options
@@ -277,18 +260,15 @@ define ['jquery'], ($) ->
     setMap: (map) ->
       ### Set map object. ###
       #
-      #
       @getNewobj().setMap map?.getNewobj?() or map
 
     setPanel: (panelName=@panelName) ->
       ### Set panel by element name. ###
       #
-      #
       @getNewobj().setPanel panelName
 
     setDirections: (results) ->
       ### Set response results of directionsService.route ###
-      #
       #
       @getNewobj().setDirections results
 
@@ -296,10 +276,8 @@ define ['jquery'], ($) ->
   class MAPSMODULE.DirectionsService extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
-    #
 
     ### Route options ###
-    #
     #
     options:
       origin: ''
@@ -316,8 +294,7 @@ define ['jquery'], ($) ->
       # unitSystem: google.maps.UnitSystem.IMPERIAL
 
     constructor: (options=null, @directionsService=google.maps.DirectionsService, @status=MAPSMODULE.DirectionsStatue) ->
-      ### Initializer ###
-      #
+      ### XXX: ###
       #
       # Set options
       if options isnt null then @setOptions @checkOptions(options)
@@ -325,8 +302,7 @@ define ['jquery'], ($) ->
       @status = new @status()
 
     checkOptions: (options) ->
-      ### Check options ###
-      #
+      ### Check travelmode, etc ###
       #
 
       # Valiable
@@ -359,7 +335,6 @@ define ['jquery'], ($) ->
         #
         # .. TODO:: Now errorful.
         #
-        #
         console.log "#{travelmode.BICYCLING} is beta."
 
       else if options.travelMode is travelmode.WALKING
@@ -373,7 +348,6 @@ define ['jquery'], ($) ->
 
     _route: (callback, options=@options) ->
       ### Request route ###
-      #
       #
       self = @
       options = @checkOptions options
@@ -400,12 +374,10 @@ define ['jquery'], ($) ->
     route: (options=@options, callback) ->
       ### Request route ###
       #
-      #
       @_route callback, @checkOptions(options)
 
     correspondBetaForTransit: (options=@options) ->
       ### For transit ###
-      #
       #
       if @options.travelMode is google.maps.DirectionsTravelMode.TRANSIT
         if window.confirm """
@@ -424,17 +396,14 @@ define ['jquery'], ($) ->
   class MAPSMODULE.Geocorder extends MAPSMODULE.BaseClass
     ### Wrapping class ###
     #
-    #
 
     constructor: (@geocoder=google.maps.Geocoder, @status=google.maps.GeocoderStatus) ->
-      ### Initializer ###
-      #
+      ### XXX: ###
       #
       @setNewobj new @geocoder()
 
     addressToLatlng: (address, callback) ->
       ### Convert from address to latlng ###
-      #
       #
       @getNewobj().geocode {'address': address}, (results, status) =>
         @setResults results
@@ -452,17 +421,14 @@ define ['jquery'], ($) ->
     setResults: (@results) ->
       ### Set result of Geocoder to this object ###
       #
-      #
 
     getResults: ->
       ### Result all ###
-      #
       #
       @results
 
     getCurrentLocation: ->
       ### Current location  ###
-      #
       #
       try
         @results[0].geometry.location
@@ -471,7 +437,6 @@ define ['jquery'], ($) ->
 
   class MAPSMODULE.Geolocation extends MAPSMODULE.BaseClass
     ### Wrapped geo ###
-    #
     #
     result: null
 
@@ -482,8 +447,7 @@ define ['jquery'], ($) ->
       enableHighAccuracy: yes
 
     constructor: (options=null, @geolocation=@getGeo()) ->
-      ### Initializer ###
-      #
+      ### XXX: ###
       #
 
       # Set options
@@ -496,19 +460,16 @@ define ['jquery'], ($) ->
       if navigator.geolocation then yes else no
 
     getResult: ->
-      ### ###
-      #
+      ### XXX: ###
       #
       @result
 
     setResult: (@result) ->
-      ### ###
-      #
+      ### XXX: ###
       #
 
     getGeo: ->
       ### Getter ###
-      #
       #
       if @checkGeo() then navigator.geolocation else null
 
@@ -559,7 +520,6 @@ define ['jquery'], ($) ->
 
       ###
       #
-      #
       r =
         code: 1000
         status: no
@@ -582,12 +542,10 @@ define ['jquery'], ($) ->
       r
 
   class MAPSMODULE.Marker extends MAPSMODULE.BaseClass
-    ### Wrapping class ###
-    #
+    ### XXX: ###
     #
 
-    ### Marker options ###
-    #
+    ### XXX: ###
     #
     options:
       position: null
@@ -595,14 +553,12 @@ define ['jquery'], ($) ->
       title: null
 
     constructor: (@options, @marker=google.maps.Marker) ->
-      ### Initializer ###
-      #
+      ### XXX:  ###
       #
       @setNewobj @getNew()
 
     getNew: (options=@options) ->
       ### Get new object ###
-      #
       #
       new @marker
         position: options.position?.getNewobj?() or options.position
@@ -614,7 +570,7 @@ define ['jquery'], ($) ->
 
 
   class MAPSMODULE.LatLng extends MAPSMODULE.BaseClass
-    ### ###
+    ### XXX: ###
     #
     #
     constructor: (options=null, @latlng=google.maps.LatLng) ->
@@ -627,7 +583,7 @@ define ['jquery'], ($) ->
       new obj.latlng(lat, lng)
 
   class MAPSMODULE.InfoWindow extends MAPSMODULE.BaseClass
-    ### Wrapping class ###
+    ### Wrapping XXX:  ###
     #
     #
 
@@ -654,7 +610,7 @@ define ['jquery'], ($) ->
     """
 
     constructor: (options=null, @infowindow=google.maps.InfoWindow) ->
-      ### Initializer ###
+      ### XXX: ###
       #
       #
 
@@ -674,7 +630,7 @@ define ['jquery'], ($) ->
       new @infowindow()
 
     getContent: (title, body, obj) ->
-      ### ###
+      ### XXX: ###
       #
       #
       newinfo = @getNewobj?() or @getNew()
@@ -682,7 +638,7 @@ define ['jquery'], ($) ->
       newinfo
 
     setTemplate: (@template) ->
-      ### ###
+      ### XXX: ###
       #
 
     getTemplate: ->
@@ -697,7 +653,7 @@ define ['jquery'], ($) ->
         @defaultTemplate
 
     renderTemplate: (title=null, body=null, obj=null) ->
-      ### ###
+      ### XXX: ###
       #
       #
       t = @getTemplate()
@@ -754,7 +710,7 @@ define ['jquery'], ($) ->
         position: google.maps.ControlPosition.BOTTOM_LEFT
 
     constructor: (@elName='#googlemaps', options=null, @map=google.maps.Map) ->
-      ### Initializer ###
+      ### XXX:  ###
       #
       #
       # Set element
@@ -799,29 +755,28 @@ define ['jquery'], ($) ->
       new @map el.get(0), options
 
     getAutoInfowindow: ->
-      ### ###
+      ### XXX: ###
       #
       if @el.attr('auto-infowindow') is 'false' then no else yes
 
     getAutoMarker: ->
-      ### ###
+      ### XXX: ###
       #
       if @el.attr('auto-marker') is 'false' then no else yes
 
     getAddress: ->
-      ### Address ###
+      ### XXX: ###
       #
       #
       @el.attr 'address'
 
     getTitle: ->
-      ### Title ###
-      #
+      ### XXX:  ###
       #
       @el.attr 'title'
 
     getBody: ->
-      ### Title ###
+      ### XXX:  ###
       #
       #
       @el.attr 'body'
@@ -843,7 +798,7 @@ define ['jquery'], ($) ->
     el: null
 
     constructor: (@elName='#info_panel') ->
-      ### Initializer ###
+      ### XXX: ###
       #
       #
       @el = $ @elName
@@ -879,7 +834,7 @@ define ['jquery'], ($) ->
       total: '#total'
 
     constructor: (@elName='#directions_panel', options=null) ->
-      ### Initializer
+      ### XXX:
       @param {String} elName - Top element name.
       @param {Object} options - options.
 
@@ -988,7 +943,7 @@ define ['jquery'], ($) ->
             click: (event, cls) ->
 
     constructor: (@elName='#control_panel', options=null) ->
-      ### Initializer
+      ### XXX:
       @param {String} elName - Top element name.
       @param {Object} options - Contoller options.
 
@@ -1089,7 +1044,7 @@ define ['jquery'], ($) ->
     setSelectors: (selectors) ->
       ### Controller selectors ###
       #
-      # TODO:
+      # XXX:
       #
 
       start = selectors?.start
@@ -1107,53 +1062,40 @@ define ['jquery'], ($) ->
     generateHtml: (selectors) ->
       ### Generate control panel ###
       #
+      # TODO:
       #
 
     getActiveTab: ->
       ### Active tab ###
       #
-      #
       @getElement 'tab.active'
 
     getActiveElement: (cls) ->
-      ###  ###
-      #
+      ### XXX: ###
       #
       @getActiveTab().find cls
 
     setValue: (key, value) ->
       ### Set value to a panel ###
       #
-      #
       super value, @getElement(key)
 
     getValue: (key) ->
       ### Get value of a panel ###
       #
-      #
       super @getElement(key)
 
     setValueTostart: (value) ->
-      ### ###
-      #
-      #
       @setValue 'start.point', value
 
     setValueToend: (value) ->
-      ### ###
-      #
-      #
       @setValue 'end.point', value
 
     setValueToway: (value) ->
-      ### ###
-      #
-      #
       @setValue 'way.point', "#{@getValue 'way.point'}#{value}\n"
 
     setPoint: (latlng, object=null) ->
       ### Set latLng to dom and next focus. ###
-      #
       #
       return false unless @isChecked 'focus.enabled'
 
@@ -1170,8 +1112,7 @@ define ['jquery'], ($) ->
         console.log '[RouteControlPanel.setPoint] Not checked error.'
 
     isChecked: (key) ->
-      ### Check push value element ###
-      #
+      ### Check to push value element ###
       #
       elm = @getElement key
 
@@ -1191,27 +1132,19 @@ define ['jquery'], ($) ->
       w.scrollTop w.prop('scrollHeight')
 
     showDirectTab: ->
-      ### Show tabs ###
-      #
-      #
       @showTab @options.tab.direct
 
     showControlTab: ->
-      ### Show tabs ###
-      #
-      #
       @showTab @options.tab.route
 
     showTab: (anchor) ->
-      ### Show tabs ###
-      #
+      ### For anchor tag ###
       #
       $tab = $("[data-toggle='tab'][href='#{anchor}']")
       $.Event("click").preventDefault()
       $tab.click()
 
     ### Current fucus element ###
-    #
     #
     _pushValueEl: null
 
@@ -1236,7 +1169,7 @@ define ['jquery'], ($) ->
           self._pushValueEl = $ @
 
     pushValue: ->
-      ### Set current focus ###
+      ### To input element ###
       #
       #
       self = @
@@ -1245,8 +1178,7 @@ define ['jquery'], ($) ->
       @getElement('way.point').focus(-> self._pushValueEl = $ @).blur -> self._pushValueEl = null
 
     focusInput: ->
-      ### Set current focus ###
-      #
+      ### Change current focus ###
       #
       self = @
       @getElement('start.point').focus -> self.getElement('start.checked').attr 'checked', yes
@@ -1254,7 +1186,7 @@ define ['jquery'], ($) ->
       @getElement('way.point').focus -> self.getElement('way.checked').attr 'checked', yes
 
     addEvent: (key, callback, event=@options.event) ->
-      ### Common ###
+      ### Common function ###
       #
       #
       if not event
@@ -1339,7 +1271,6 @@ define ['jquery'], ($) ->
 
     onCurrent: (event) =>
       ### Enabled navigator.geolocation ###
-      #
       #
       #
       btn = @getCurrentElement()
@@ -1469,7 +1400,7 @@ define ['jquery'], ($) ->
     calculatedArrayobj: []
 
     constructor: (@arrayobj, options=null, @marker=MAPSMODULE.Marker, @infowindow=MAPSMODULE.InfoWindow, @latlng=MAPSMODULE.LatLng, @event=MAPSMODULE.Event) ->
-      ### Initializer ###
+      ### XXX: ###
       #
       #
 
@@ -1527,38 +1458,43 @@ define ['jquery'], ($) ->
       @calculatedArrayobj.push obj
 
     setInfoWindow: (infowindow) ->
-      ### Setter ###
-      #
-      #
+      ###
 
+      @param {MAPSMODULE.InfoWindow} infowindow
+      ###
       MAPSMODULE.MarkerWindow.infowindows.push infowindow
 
     setMarker: (marker) ->
-      ### Setter ###
-      #
-      #
+      ###
+
+      @param {MAPSMODULE.Marker} marker
+      ###
       MAPSMODULE.MarkerWindow.markers.push marker
 
     getMarker: (latlng, obj, map=@getMap()) ->
-      ### Getter ###
-      #
-      #
+      ###
+
+      @return {MAPSMODULE.Marker}
+      ###
       marker = new @marker {position: latlng, title: @getTitle(obj), map}
       @setMarker marker
       marker
 
     setTemplate: (template) ->
-      ### Setter ###
-      #
-      #
+      ###
+
+      @param {String} Element selector
+      ###
       @defaultTemplateEl = $ template
       t = @defaultTemplateEl.clone()
       @template = "<div class='marker-window-template'>#{t.attr('id', '').removeClass('hide').html()}</div>"
 
     getInfowindow: (marker, obj, map=@getMap()) ->
-      ### Open info window ###
-      #
-      #
+      ###
+      @param {MAPSMODULE.Marker} marker
+      @param {Object} obj - Mapping fields object.
+      @param {MAPSMODULE.Map}
+      ###
       # Get marker object
       infowindow = new @infowindow {marker, title: @getTitle(obj), map}
       infowindow.setTemplate @template if @template
@@ -1566,36 +1502,31 @@ define ['jquery'], ($) ->
       infowindow
 
     getLatLng: (lat, lng) ->
-      ### Getter ###
-      #
+      ### Create LatLng ###
       #
       @latlng.new lat, lng
 
     openInfowindow: (marker, obj) ->
-      ### ###
-      #
+      ### XXX: ###
       #
       infowindow = @getInfowindow marker, obj
       if @template then infowindow.openTemplate obj else infowindow.open @getTitle(obj), @getBody(obj)
       infowindow
 
     closeWindows: ->
-      ### Closer ###
-      #
+      ### All close ###
       #
       if MAPSMODULE.MarkerWindow.infowindows.length
         (infowindow.close() for infowindow in MAPSMODULE.MarkerWindow.infowindows)
 
     closeMarkers: ->
-      ### Closer ###
-      #
+      ### All close ###
       #
       if MAPSMODULE.MarkerWindow.markers.length
         (marker.setMap null for marker in MAPSMODULE.MarkerWindow.markers)
 
     setArrayObj: (@arrayobj) ->
-      ### Setter ###
-      #
+      ### Calculate ###
       #
       @calculatedArrayobj = []
       @calcMarkerPosition @arrayobj if @arrayobj
@@ -1603,15 +1534,13 @@ define ['jquery'], ($) ->
     calcMarkerPosition: (arrayobj) ->
       ### clcer ###
       #
-      #
       (@setCalculatedArrayobj @compute(obj) for obj in arrayobj)
         # @setMarkers
         # @setInfoWindow
         # @setCalculatedArrayobj
 
     compute: (obj) =>
-      ### calc lat lng ###
-      #
+      ### Calculate lat lng ###
       #
       return obj unless @isLatLng obj
 
@@ -1620,6 +1549,7 @@ define ['jquery'], ($) ->
 
       ### Tail recursion ###
       #
+
       num = random()
 
       lat = @options.lat
@@ -1641,8 +1571,6 @@ define ['jquery'], ($) ->
       @compute obj
 
     isLatLng: (o) ->
-      ### ###
-      #
       for c in @calculatedArrayobj
         return true if (c.latitude is o.latitude) and (c.longitude is o.longitude)
       false
@@ -1662,14 +1590,13 @@ define ['jquery'], ($) ->
           self.closeWindows()
           self.openInfowindow marker, obj
 
-          # Event fire
+          # Any event fire
           $.event.trigger 'ajaxStop'
 
       )(marker, obj)
 
     run: (arrayobj=@getCalculatedArrayobj()) ->
-      ### ###
-      #
+      ### XXX; ###
       #
 
       # Closes
@@ -1689,10 +1616,8 @@ define ['jquery'], ($) ->
   class MAPSMODULE.RenderMap extends MAPSMODULE.BaseClass
     ### Route map class ###
     #
-    #
 
     ### Control panel ###
-    #
     #
     controlPanel: MAPSMODULE.RouteControlPanel
 
@@ -1770,7 +1695,7 @@ define ['jquery'], ($) ->
     nearApi: MAPSMODULE.NearApi
 
     constructor: (options=null) ->
-      ### Initializer
+      ### XXX:
       @param {String|Object} place - Address{String} or Google latlng{Object}.
       @param {Object} options - Options for rendering map.
 
@@ -1804,16 +1729,16 @@ define ['jquery'], ($) ->
 
       ## Set objects to this property.
       #
-      # Set directPanel
+      # directPanel
       @setOptionClass options, 'directPanel'
 
       # Set control panel to this property.
       @setOptionClass options, 'controlPanel'
 
-      # Set infoPanel
+      # infoPanel
       @setOptionClass options, 'infoPanel'
 
-      # Set directions renderer
+      # directions renderer
       @setOptionClass options, 'directRender'
 
       # {google.maps.Map}
@@ -1861,40 +1786,37 @@ define ['jquery'], ($) ->
     getLatlng: (place=@place, callback) ->
       ### Get latlng ###
       #
+      # @param {String} place
+      # @param {Function} callback
       #
       @geocorder.addressToLatlng place or @map.getAddress(), (results, status, message) ->
+        ###
+        @param {Array<Object>} results
+        @param {String} status
+        @param {String} message
+        ###
         callback results, status, message
 
     getMarker: (latlng, title=@map.getTitle(), map=@map) ->
-      ### Get marker object ###
-      #
-      #
       new @marker {position: latlng, title, map}
 
     getInfowindow: (marker, title=@map.getTitle(), map=@map) ->
-      ### Open info window ###
-      #
-      #
-      # Get marker object
       new @infowindow {marker, map, title}
 
     openInfowindow: (marker, title=@map.getTitle(), body=@map.getBody()) ->
-      ### ###
-      #
+      ### XXX: ###
       #
       infowindow = @getInfowindow marker
       infowindow.open title, body
       infowindow
 
     setMap: (map=@map) ->
-      ### Set map ###
-      #
+      ### To DirectionsRenderer ###
       #
       @directRender.setMap map
 
     setDirectPanel: (directPanelEl=@directPanel.el) ->
       ### Set panel ###
-      #
       #
       if directPanelEl.is '*'
         @directRender.setPanel directPanelEl.get(0)
@@ -1904,41 +1826,34 @@ define ['jquery'], ($) ->
     run: (options={}) ->
       ### Render map ###
       #
-      #
       @getLatlng options?.place, (results, status, message) =>
         ### Current latlng ###
-        #
-        #
 
-        # Set latlng to a map options.
+        # Set curernt latlng to a map options.
         @map.setCenter @geocorder.getCurrentLocation()
 
         # Set map to panel
         @setMap()
 
-        # Set directions panel
         @setDirectPanel()
 
-        # New marker
+        # Create marker
         marker = @getMarker @geocorder.getCurrentLocation()
 
-        # New infowindow
+        # Create infowindow
         infowindow = if @map.getAutoInfowindow() then @openInfowindow marker else @getInfowindow marker
 
         ### Event receivers ###
         #
-        #
 
         @controlPanel.addCurrentEvent (event, cls) =>
-          ### On submit location current . ###
-          #
+          ### On submit button to current location  ###
           #
           if event.data.controlPanel.current.disabled is yes
             @_setCurrentLocation()
 
         @controlPanel.addClearaddrEvent (event, cls) =>
           ### On submit clear input values. ###
-          #
           #
 
         @controlPanel.addRouteEvent (event, cls) =>
@@ -1957,7 +1872,6 @@ define ['jquery'], ($) ->
 
           service._route (response, status) =>
             ### Request calc route ###
-            #
             #
             if status.bool is no
               @controlPanel.showError status.message, status.status
@@ -1980,7 +1894,6 @@ define ['jquery'], ($) ->
             else
               # Set latlng to a map options.
               #
-              #
               @controlPanel.hideError()
 
               first = arrayobj[0]
@@ -1988,7 +1901,6 @@ define ['jquery'], ($) ->
               # Set latlong of first object into map.
               @map.setCenter @latlng.new(first.latitude, first.longitude)
 
-              # Set map
               @markerWindow.setMap @map
 
               # Mapping title and body keys.
@@ -1996,28 +1908,25 @@ define ['jquery'], ($) ->
               # @markerWindow.setTitleAttributes 'title', 'area_name', 'city_name', 'jobtype_name', 'pref_name'
               # @markerWindow.setBodyAttributes 'descript', 'url', 'required', 'pr', 'transport'
 
-              # New marker obj
+              # For calculate
               @markerWindow.setArrayObj arrayobj
 
               # Runner
               @markerWindow.run()
 
         @event.on marker, 'click', (event) =>
-          ### Mouse event receiver ###
-          #
+          ### Receive for mouse event  ###
           #
           @openInfowindow marker
 
         @event.on @map, 'click', (event) =>
           ### Mouse event receiver ###
           #
-          #
           if @controlPanel.setPoint event.latLng, @map isnt false
             @controlPanel.showControlTab()
 
         @event.on @directRender, 'click', (event) =>
           ### Directions changed event receiver ###
-          #
           #
           @directPanel.setTotalDistance @directRender
           @infoPanel.setTotalDistance @directRender
@@ -2030,12 +1939,9 @@ define ['jquery'], ($) ->
     _setCurrentLocation: =>
       ### Set value of current location into button attributes. ###
       #
-      #
 
       # Call navigator.geolocation
       @geolocation.getCurrentLocation (result, status) =>
-        # Set current location
-        #
         #
         if status is yes
           # Allow geolocation
@@ -2062,7 +1968,6 @@ define ['jquery'], ($) ->
 
         else if result.code is 1000
           ### Tail recursion ###
-          #
           #
           console.log "[RenderMap.run] Warning: tail recursion.", status, result
           @_setCurrentLocation()
