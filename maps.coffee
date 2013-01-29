@@ -252,18 +252,22 @@ define ['jquery'], ($) ->
       ### XXX: ###
       #
 
-      # Set options
       if options isnt null then @setOptions options
       @setNewobj new @directionsRenderer(@options)
       @setPanel @panelName
 
     setMap: (map) ->
-      ### Set map object. ###
-      #
+      ###
+
+      @param {MAPSMODULE.Map|google.maps.Map} map
+      ###
       @getNewobj().setMap map?.getNewobj?() or map
 
     setPanel: (panelName=@panelName) ->
-      ### Set panel by element name. ###
+      ### Set panel by element name
+
+      @param {String} Element selectorname.
+      ###
       #
       @getNewobj().setPanel panelName
 
@@ -296,7 +300,6 @@ define ['jquery'], ($) ->
     constructor: (options=null, @directionsService=google.maps.DirectionsService, @status=MAPSMODULE.DirectionsStatue) ->
       ### XXX: ###
       #
-      # Set options
       if options isnt null then @setOptions @checkOptions(options)
       @setNewobj new @directionsService()
       @status = new @status()
@@ -450,7 +453,6 @@ define ['jquery'], ($) ->
       ### XXX: ###
       #
 
-      # Set options
       if options isnt null then @setOptions options
 
     checkGeo: ->
@@ -617,10 +619,8 @@ define ['jquery'], ($) ->
       # Set el
       @el = if options.elName then $ options.elName else $('')
 
-      # Set options
       if options isnt null then @setOptions options
 
-      # Set new obj
       @setNewobj @getNew()
 
     getNew: ->
@@ -713,10 +713,8 @@ define ['jquery'], ($) ->
       ### XXX:  ###
       #
       #
-      # Set element
       @el = $ @elName
 
-      # Set options
       if options isnt null then @setOptions options
 
       # New object
@@ -1404,7 +1402,6 @@ define ['jquery'], ($) ->
       #
       #
 
-      # Set options
       if options isnt null then @setOptions options
 
       # Calc
@@ -1603,7 +1600,7 @@ define ['jquery'], ($) ->
       @closeWindows()
       @closeMarkers()
 
-      # Set marker
+      # Flag marker
       for obj in arrayobj
         # New marker
         marker = @getMarker @getLatLng(obj.latitude, obj.longitude), obj
