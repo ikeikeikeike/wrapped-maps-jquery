@@ -159,14 +159,13 @@ define ['jquery'], ($) ->
       #
       @path_join [@options.baseurl, path]
 
-    toQueryString: (data) ->
+    toQueryString: (obj) ->
       ### Convert from obj to string ###
       #
       str = []
       for key, value of obj
-        str.push(encodeURIComponent key + "=" + encodeURIComponent value)
+        str.push "#{encodeURIComponent key}=#{encodeURIComponent value}"
       str.join "&"
-      str
 
     commonCallback: (json, callback, status, message) ->
       ### Callback function ###
@@ -701,7 +700,7 @@ define ['jquery'], ($) ->
     #
     #
     options:
-      zoom: 14
+      zoom: 15
       scrollwheel: no
       scaleControl: yes
       center: null
@@ -729,6 +728,9 @@ define ['jquery'], ($) ->
       #
       console.log "[MAP.checkOptions] Option error: options.center is #{@options.center}" unless @options.center
       console.log "[MAP.checkOptions] Option error: options.zoom is #{@options.zoom}" unless @options.zoom
+
+    getBounds: ->
+      @getNewobj().getBounds()
 
     getNewobj: ->
       ### Get newobj ###
@@ -784,6 +786,13 @@ define ['jquery'], ($) ->
       #
       #
       @el.attr 'content'
+
+    getMain: ->
+      ### Get identifier of main panel  ###
+      #
+      #
+      @el.attr 'main'
+
 
   class MAPSMODULE.RouteInfoPanel extends MAPSMODULE.BaseClass
     ### Route infomation panel ###
@@ -1183,6 +1192,19 @@ define ['jquery'], ($) ->
       @getElement('end.point').focus -> self.getElement('end.checked').attr 'checked', yes
       @getElement('way.point').focus -> self.getElement('way.checked').attr 'checked', yes
 
+    fireEvent: (key, event, dataList=[]) ->
+      ### Use jQuery trigger method
+
+      @param {String} key trigger key
+      @param {String} event trigger Event
+      ###
+      @getElement(key).trigger event, dataList
+
+    fireNearEvent: (dataList=[]) ->
+      # Search near place.
+      #
+      @fireEvent 'event.near.id', 'click', dataList
+
     addEvent: (key, callback, event=@options.event) ->
       ### Common function ###
       #
@@ -1284,8 +1306,8 @@ define ['jquery'], ($) ->
       @_addParamsToEvent event, current: {disabled: boolean}
 
       # Calls
-      event.data?.usercallback event, @
-      event.data?.maincallback event, @
+      event.data?.usercallback?(event, @)
+      event.data?.maincallback?(event, @)
 
     onClearaddr: (event) =>
       ### Clear form  ###
@@ -1304,8 +1326,8 @@ define ['jquery'], ($) ->
       @getCurrentElement().removeClass "active"
 
       # Calls
-      event.data?.usercallback event, @
-      event.data?.maincallback event, @
+      event.data?.usercallback?(event, @)
+      event.data?.maincallback?(event, @)
 
     onRoute: (event) =>
       ### Route search request ###
@@ -1333,8 +1355,8 @@ define ['jquery'], ($) ->
       @_addParamsToEvent event, options: {start, end, hw, toll, mode, waypts}
 
       # Calls
-      event.data?.usercallback event, @
-      event.data?.maincallback event, @
+      event.data?.usercallback?(event, @)
+      event.data?.maincallback?(event, @)
 
     onNear: (event) =>
       ### Near search request ###
@@ -1357,8 +1379,8 @@ define ['jquery'], ($) ->
       @_addParamsToEvent event, {form}
 
       # Calls
-      event.data?.usercallback event, @
-      event.data?.maincallback event, @
+      event.data?.usercallback?(event, @)
+      event.data?.maincallback?(event, @)
 
     _addParamsToEvent: (event, params) ->
       ### ###
@@ -1691,6 +1713,10 @@ define ['jquery'], ($) ->
     #
     nearApi: MAPSMODULE.NearApi
 
+    ### Number of idling ###
+    #
+    idles: 0
+
     constructor: (options=null) ->
       ### XXX:
       @param {String|Object} place - Address{String} or Google latlng{Object}.
@@ -1826,8 +1852,10 @@ define ['jquery'], ($) ->
       @getLatlng options?.place, (results, status, message) =>
         ### Current latlng ###
 
+        latlng = @geocorder.getCurrentLocation()
+
         # Set curernt latlng to a map options.
-        @map.setCenter @geocorder.getCurrentLocation()
+        @map.setCenter latlng
 
         # Set map to panel
         @setMap()
@@ -1835,7 +1863,7 @@ define ['jquery'], ($) ->
         @setDirectPanel()
 
         # Create marker
-        marker = @getMarker @geocorder.getCurrentLocation()
+        marker = @getMarker latlng
 
         # Create infowindow
         infowindow = if @map.getAutoInfowindow() then @openInfowindow marker else @getInfowindow marker
@@ -1883,33 +1911,36 @@ define ['jquery'], ($) ->
           #
           #
           form = event.data.controlPanel.form
-          @nearApi.near form.get(0).action, form.serialize(), (arrayobj) =>
-            if arrayobj.length < 1
-              # Zero result
-              #
-              @controlPanel.showError "文言を変更して、再度検索して下さい", 'NOT_FOUND '
-            else
-              # Set latlng to a map options.
-              #
-              @controlPanel.hideError()
+          @nearSearch form.get(0).action, form.serialize()
 
-              first = arrayobj[0]
+        @event.on @map, 'idle', (event) =>
+          ### Change map event ###
+          #
 
-              # Set latlong of first object into map.
-              @map.setCenter @latlng.new(first.latitude, first.longitude)
+          # One time, Disabled
+          return if @idles > 0
 
-              @markerWindow.setMap @map
+          self = @
 
-              # Mapping title and body keys.
-              @markerWindow.setTemplate '#marker_window'
-              # @markerWindow.setTitleAttributes 'title', 'area_name', 'city_name', 'jobtype_name', 'pref_name'
-              # @markerWindow.setBodyAttributes 'descript', 'url', 'required', 'pr', 'transport'
+          callback = (event, cls) ->
+            ### Get near form element ###
+            #
+            form = event.data.controlPanel.form
+            Q_ = self.map.getBounds().getCenter()
 
-              # For calculate
-              @markerWindow.setArrayObj arrayobj
+            # Request near
+            self.nearSearch form.get(0).action, {latitude: Q_.Ya, longitude: Q_.Za}, no
 
-              # Runner
-              @markerWindow.run()
+        # if @idles % 10 is 0
+          @controlPanel.onNear(
+            data:
+              maincallback: callback
+          )
+
+          @idles += 1
+
+          # For near control panel
+          # @controlPanel.fireNearEvent() if @map.getMain() is 'near'
 
         @event.on marker, 'click', (event) =>
           ### Receive for mouse event  ###
@@ -1932,6 +1963,42 @@ define ['jquery'], ($) ->
         # google.maps.event.addListener(directionsDisplay, 'directions_changed', function() {
           # computeTotalDistance(directionsDisplay.directions);
         # })
+
+    nearSearch: (url, data, center=yes) =>
+      ###
+      @param {String} url
+      @param {String|Object} data
+      ###
+      @nearApi.near url, data, (arrayobj) =>
+        ###
+        @param {Array<object>} arrayobj
+        ###
+        if arrayobj.length < 1
+          # Zero result
+          #
+          @controlPanel.showError "時間をおいてから再度検索して下さい", 'NOT_FOUND '
+        else
+          # Set latlng to a map options.
+          #
+          @controlPanel.hideError()
+
+          first = arrayobj[0]
+
+          # Set latlong of first object into map.
+          @map.setCenter @latlng.new(first.latitude, first.longitude) if center is yes
+
+          @markerWindow.setMap @map
+
+          # Mapping title and body keys.
+          @markerWindow.setTemplate '#marker_window'
+          # @markerWindow.setTitleAttributes 'title', 'area_name', 'city_name', 'jobtype_name', 'pref_name'
+          # @markerWindow.setBodyAttributes 'descript', 'url', 'required', 'pr', 'transport'
+
+          # For calculate
+          @markerWindow.setArrayObj arrayobj
+
+          # Runner
+          @markerWindow.run()
 
     _setCurrentLocation: =>
       ### Set value of current location into button attributes. ###
