@@ -162,10 +162,7 @@ define ['jquery'], ($) ->
     toQueryString: (obj) ->
       ### Convert from obj to string ###
       #
-      str = []
-      for key, value of obj
-        str.push "#{encodeURIComponent key}=#{encodeURIComponent value}"
-      str.join "&"
+      ("#{encodeURIComponent key}=#{encodeURIComponent value}" for key, value of obj).join "&"
 
     commonCallback: (json, callback, status, message) ->
       ### Callback function ###
@@ -193,14 +190,32 @@ define ['jquery'], ($) ->
 
   class MAPSMODULE.Event extends MAPSMODULE.BaseClass
     ### Wrapped ###
+    ### Utility ###
     #
     @event: google.maps.event
 
-    @on: (object, event, callback) ->
-      ### Utility ###
-      #
-      MAPSMODULE.Event.event.addListener object?.getNewobj?() or object, event, callback
+    @on: (id, event, callback) ->
+      if $.type(id) is 'string'
+        $(id).off(event).on event, callback
+      else
+        MAPSMODULE.Event.event.addListener id?.getNewobj?() or id, event, callback
 
+    @once: (id, event, callback) ->
+      if $.type(id) is 'string'
+        $(id).off(event).one event, callback
+      else
+        MAPSMODULE.Event.event.addListenerOnce id?.getNewobj?() or id, event, callback
+
+    @anything: (object, event, callback) ->
+      cls = MAPSMODULE.Event
+
+      $('html, body').ajaxStart(->
+        cls.on object, event, callback
+      ).ajaxStop(->
+        cls.on object, event, callback
+      ).ajaxComplete(->
+        cls.on object, event, callback
+      )
 
   class MAPSMODULE.DirectionsStatue extends MAPSMODULE.BaseClass
     ### Status Errors ###
@@ -225,8 +240,8 @@ define ['jquery'], ($) ->
       #
       #
       @statues[@directionsStatus.INVALID_REQUEST] = 'DirectionsRequest が無効'
-      @statues[@directionsStatus.MAX_WAYPOINTS_EXCEEDED] = '経由点がが多すぎます。経由点は 8 以内です'
-      @statues[@directionsStatus.NOT_FOUND] = 'いずれかの点が緯度経度に変換できませんでした'
+      @statues[@directionsStatus.MAX_WAYPOINTS_EXCEEDED] = '経由地がが多すぎます。経由点は 8 以内です'
+      @statues[@directionsStatus.NOT_FOUND] = '経路検索対象が抜けています'
       @statues[@directionsStatus.OVER_QUERY_LIMIT] = '単位時間当りのリクエスト制限回数を超えました'
       @statues[@directionsStatus.REQUEST_DENIED] = 'このサイトからはルートサービスを使用できません'
       @statues[@directionsStatus.UNKNOWN_ERROR] = '不明なエラーです。もう一度試すと正常に処理される可能性があります'
@@ -445,7 +460,7 @@ define ['jquery'], ($) ->
     options:
       maximumAge: 0
       timeout: 1500
-      frequency: 1000
+      frequency: 480
       enableHighAccuracy: yes
 
     constructor: (options=null, @geolocation=@getGeo()) ->
@@ -492,7 +507,7 @@ define ['jquery'], ($) ->
 
         self = @
         calcs = []
-        WAIT = 3000
+        WAIT = 1500
 
         # Watch
         watchId = @getGeo().watchPosition (position) ->
@@ -531,16 +546,17 @@ define ['jquery'], ($) ->
           # For success
           if calc.success.coords.accuracy < r.coords.accuracy
             # Put Succes object
-            r = calc.success
+            r = $.extend {}, calc.success
             r.status = yes
         else if r.status is no
           # Error re:calc
-          r = calc.error
+          r = $.extend {}, calc.error
           r.status = no
           r.coords = accuracy: 1000
 
       @setResult r
       r
+
 
   class MAPSMODULE.Marker extends MAPSMODULE.BaseClass
     ### XXX: ###
@@ -660,7 +676,7 @@ define ['jquery'], ($) ->
         for key, value of obj
           t = t.split("{#{key}}").join value
           t = t.split("%7B#{key}%7D").join value
-      else
+      else if title or body
         t = t.replace /{title}/g, title or @options?.title
         t = t.replace /{body}/g, body or @options?.body
         t = t.replace /%7Btitle%7D/g, title or @options?.title
@@ -792,6 +808,12 @@ define ['jquery'], ($) ->
       #
       #
       @el.attr 'main'
+
+    getMarkerWindow: ->
+      ### Get identifier of main panel  ###
+      #
+      #
+      @el.attr 'marker-window'
 
 
   class MAPSMODULE.RouteInfoPanel extends MAPSMODULE.BaseClass
@@ -1138,6 +1160,10 @@ define ['jquery'], ($) ->
       w = @getElement(key)
       w.scrollTop w.prop('scrollHeight')
 
+    showMainTabPanel: ->
+      $(@options.tab.show).addClass "hide"
+      $(@elName).removeClass "hide"
+
     showDirectTab: ->
       @showTab @options.tab.direct
 
@@ -1204,6 +1230,11 @@ define ['jquery'], ($) ->
       # Search near place.
       #
       @fireEvent 'event.near.id', 'click', dataList
+
+    fireRouteEvent: (dataList=[]) ->
+      # Search near place.
+      #
+      @fireEvent 'event.route.id', 'click', dataList
 
     addEvent: (key, callback, event=@options.event) ->
       ### Common function ###
@@ -1347,9 +1378,7 @@ define ['jquery'], ($) ->
       # Mode
       mode = @getTravelmode()
       # Way point
-      waypts = []
-      for wats in @getValue("way.point").split "\n"
-        waypts.push {location: wats, stopover: yes} if wats != ''
+      waypts = ({location: wats, stopover: yes} for wats in @getValue("way.point").split("\n") when wats != '')
 
       # Add parameter
       @_addParamsToEvent event, options: {start, end, hw, toll, mode, waypts}
@@ -1365,6 +1394,9 @@ define ['jquery'], ($) ->
       # Start
       form = @getElement('near.form')
       if @getCurrentElement().hasClass("active")
+        #
+        # TODO: latitude, longitude
+        #
         latlng = @getCurrentElement().val().replace(')', '').replace('(', '').split(',')
         lat = latlng[0]
         lng = latlng[1]
@@ -1594,24 +1626,32 @@ define ['jquery'], ($) ->
         return true if (c.latitude is o.latitude) and (c.longitude is o.longitude)
       false
 
-    onMemory: (marker, obj) ->
+    onOpenInfowindow: (marker, obj, event='click') =>
+      ### Event listener ###
+      #
+      #
+      self = @
+
+      @event.on marker, event, (ev) ->
+        ### Mouse event receiver ###
+        #
+        #
+
+        # Window
+        self.closeWindows()
+        self.openInfowindow marker, obj
+
+        # Any event fire
+        $.event.trigger 'ajaxStop'
+
+    onMemory: (marker, obj, event='click') ->
       ### On memory event listener ###
       #
       #
       self = @
+
       ((marker, obj) ->
-        self.event.on marker, 'click', (event) ->
-          ### Mouse event receiver ###
-          #
-          #
-
-          # Window
-          self.closeWindows()
-          self.openInfowindow marker, obj
-
-          # Any event fire
-          $.event.trigger 'ajaxStop'
-
+        self.onOpenInfowindow marker, obj, event
       )(marker, obj)
 
     run: (arrayobj=@getCalculatedArrayobj()) ->
@@ -1826,12 +1866,13 @@ define ['jquery'], ($) ->
     getInfowindow: (marker, title=@map.getTitle(), map=@map) ->
       new @infowindow {marker, map, title}
 
-    openInfowindow: (marker, title=@map.getTitle(), body=@map.getBody()) ->
+    openInfowindow: (marker) ->
       ### XXX: ###
       #
-      infowindow = @getInfowindow marker
-      infowindow.open title, body
-      infowindow
+      # Create MarkerWindow
+      @markerWindow.setMap @map
+      @markerWindow.setTemplate @map.getMarkerWindow()
+      @markerWindow.openInfowindow marker
 
     setMap: (map=@map) ->
       ### To DirectionsRenderer ###
@@ -1862,14 +1903,26 @@ define ['jquery'], ($) ->
 
         @setDirectPanel()
 
-        # Create marker
+        # Create marker, infowindow
         marker = @getMarker latlng
 
         # Create infowindow
-        infowindow = if @map.getAutoInfowindow() then @openInfowindow marker else @getInfowindow marker
+        infowindow = @getInfowindow marker
+
+        # Onclick
+        if @map.getAutoInfowindow()
+          @markerWindow.onOpenInfowindow marker
 
         ### Event receivers ###
         #
+
+        @event.anything '.click_tolocation', 'click', (event) =>
+          ### To store route ###
+          #
+          @controlPanel.showMainTabPanel()
+          @controlPanel.showControlTab()
+          @controlPanel.setValueToend event.currentTarget.value
+          @controlPanel.fireRouteEvent()
 
         @controlPanel.addCurrentEvent (event, cls) =>
           ### On submit button to current location  ###
@@ -1901,10 +1954,10 @@ define ['jquery'], ($) ->
             if status.bool is no
               @controlPanel.showError status.message, status.status
             else
+              @controlPanel.hideError()
               @controlPanel.showDirectTab()
               @directRender.setDirections response
               @infoPanel.setTotalDistance response
-              @controlPanel.hideError()
 
         @controlPanel.addNearEvent (event, cls) =>
           ### Near search ###
@@ -1912,6 +1965,15 @@ define ['jquery'], ($) ->
           #
           form = event.data.controlPanel.form
           @nearSearch form.get(0).action, form.serialize()
+
+        @event.once @map, 'tilesloaded', =>
+          ### Map onload ###
+          #
+          #
+          if @map.getAutoInfowindow()
+            infowindow = @openInfowindow marker
+            # Any event fire
+            $.event.trigger 'ajaxStop'
 
         @event.on @map, 'idle', (event) =>
           ### Change map event ###
@@ -1929,7 +1991,7 @@ define ['jquery'], ($) ->
             Q_ = self.map.getBounds().getCenter()
 
             # Request near
-            self.nearSearch form.get(0).action, {latitude: Q_.Ya, longitude: Q_.Za}, no
+            self.nearSearch(form.get(0).action, {latitude: Q_.Ya, longitude: Q_.Za}, no) if form.length
 
         # if @idles % 10 is 0
           @controlPanel.onNear(
@@ -1938,14 +2000,6 @@ define ['jquery'], ($) ->
           )
 
           @idles += 1
-
-          # For near control panel
-          # @controlPanel.fireNearEvent() if @map.getMain() is 'near'
-
-        @event.on marker, 'click', (event) =>
-          ### Receive for mouse event  ###
-          #
-          @openInfowindow marker
 
         @event.on @map, 'click', (event) =>
           ### Mouse event receiver ###
@@ -1990,7 +2044,7 @@ define ['jquery'], ($) ->
           @markerWindow.setMap @map
 
           # Mapping title and body keys.
-          @markerWindow.setTemplate '#marker_window'
+          @markerWindow.setTemplate @map.getMarkerWindow()
           # @markerWindow.setTitleAttributes 'title', 'area_name', 'city_name', 'jobtype_name', 'pref_name'
           # @markerWindow.setBodyAttributes 'descript', 'url', 'required', 'pr', 'transport'
 
